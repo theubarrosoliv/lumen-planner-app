@@ -30,11 +30,24 @@ if (isInIframe || isPreviewHost) {
     }
   }
 } else if ("serviceWorker" in navigator) {
-  // Production / standalone: register the PWA service worker for offline use.
+  // Production / standalone: register the PWA service worker for offline use,
+  // and auto-update it — no manual uninstall/reinstall needed on desktop or mobile.
   window.addEventListener("load", () => {
     import("virtual:pwa-register")
       .then(({ registerSW }) => {
-        registerSW({ immediate: true });
+        const updateSW = registerSW({
+          immediate: true,
+          onRegisteredSW(_url, registration) {
+            if (registration) {
+              setInterval(() => {
+                registration.update().catch(() => {});
+              }, 60 * 1000);
+            }
+          },
+          onNeedRefresh() {
+            updateSW(true);
+          },
+        });
       })
       .catch(() => {
         /* PWA module unavailable — ignore */
