@@ -12,7 +12,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CreatableSelect } from "@/components/CreatableSelect";
+import { useCustomOptions } from "@/hooks/use-custom-options";
 import { useAppStore, useUserData, todayKey, dateKey } from "@/store/useAppStore";
 import { Task } from "@/store/types";
 import { toast } from "sonner";
@@ -44,6 +45,13 @@ function TaskDialog({
   const [time, setTime] = useState(initial?.time && initial.time !== "—" ? initial.time : "");
   const [tag, setTag] = useState(initial?.tag ?? "Foco");
   const [date, setDate] = useState(initial?.date ?? todayKey());
+  const {
+    options: tagOptions,
+    custom: customTags,
+    addOption: addTagOption,
+    removeOption: removeTagOption,
+    renameOption: renameTagOption,
+  } = useCustomOptions("lumen-custom-tags", TAGS);
 
   const submit = () => {
     if (!text.trim()) {
@@ -82,18 +90,15 @@ function TaskDialog({
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Categoria</Label>
-            <Select value={tag} onValueChange={setTag}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {TAGS.map((t) => (
-                  <SelectItem key={t} value={t}>
-                    {t}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <CreatableSelect
+              value={tag}
+              onChange={setTag}
+              options={tagOptions}
+              onCreate={addTagOption}
+              customOptions={customTags}
+              onRemove={removeTagOption}
+              onRename={renameTagOption}
+            />
           </div>
         </div>
         <DialogFooter>

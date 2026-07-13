@@ -13,6 +13,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { CreatableSelect } from "@/components/CreatableSelect";
+import { useCustomOptions } from "@/hooks/use-custom-options";
 import { useAppStore, useUserData } from "@/store/useAppStore";
 import { toast } from "sonner";
 import { Goal, Milestone } from "@/store/types";
@@ -45,6 +47,13 @@ function GoalDialog({
   const [name, setName] = useState(initial?.name ?? "");
   const [category, setCategory] = useState(initial?.category ?? "Carreira");
   const [deadline, setDeadline] = useState(initial?.deadline === "Sem prazo" ? "" : initial?.deadline ?? "");
+  const {
+    options: categoryOptions,
+    custom: customCategories,
+    addOption: addCategoryOption,
+    removeOption: removeCategoryOption,
+    renameOption: renameCategoryOption,
+  } = useCustomOptions("lumen-custom-goal-categories", CATEGORIES);
 
   const submit = () => {
     if (!name.trim()) return toast.error("Defina o nome da meta.");
@@ -73,15 +82,15 @@ function GoalDialog({
               <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                 Categoria
               </Label>
-              <select
+              <CreatableSelect
                 value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-              >
-                {CATEGORIES.map((c) => (
-                  <option key={c}>{c}</option>
-                ))}
-              </select>
+                onChange={setCategory}
+                options={categoryOptions}
+                onCreate={addCategoryOption}
+                customOptions={customCategories}
+                onRemove={removeCategoryOption}
+                onRename={renameCategoryOption}
+              />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Prazo</Label>

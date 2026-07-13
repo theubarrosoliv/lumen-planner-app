@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { LogOut, WifiOff } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/store/useAppStore";
 import {
@@ -59,6 +60,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                   Offline
                 </div>
               )}
+
+              <ThemeToggle />
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

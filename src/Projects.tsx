@@ -4,70 +4,70 @@
 
 @layer base {
   :root {
-    /* Graphite & Gold — light mode, softened */
-    --background: 35 28% 95%;
-    --foreground: 220 12% 22%;
+    /* Graphite & Bronze — light mode */
+    --background: 30 20% 98%;
+    --foreground: 220 15% 12%;
 
-    --card: 30 26% 97%;
-    --card-foreground: 220 12% 22%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 15% 12%;
 
-    --popover: 30 26% 97%;
-    --popover-foreground: 220 12% 22%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 15% 12%;
 
-    /* Primary: rich gold — the signature (same tone in both themes) */
-    --primary: 42 74% 36%;
-    --primary-foreground: 30 20% 98%;
-    --primary-glow: 46 82% 34%;
+    /* Primary: warm bronze — the signature */
+    --primary: 32 45% 45%;
+    --primary-foreground: 30 15% 98%;
+    --primary-glow: 34 55% 40%;
 
-    --secondary: 30 20% 91%;
-    --secondary-foreground: 220 12% 28%;
+    --secondary: 30 15% 94%;
+    --secondary-foreground: 220 15% 18%;
 
-    --muted: 30 18% 91%;
-    --muted-foreground: 220 8% 46%;
+    --muted: 30 12% 94%;
+    --muted-foreground: 220 8% 42%;
 
-    --accent: 42 70% 34%;
-    --accent-foreground: 30 20% 98%;
+    --accent: 32 38% 42%;
+    --accent-foreground: 30 15% 98%;
 
-    --destructive: 4 55% 42%;
-    --destructive-foreground: 30 20% 98%;
+    --destructive: 4 60% 45%;
+    --destructive-foreground: 30 15% 98%;
 
-    --success: 158 35% 30%;
-    --warning: 38 60% 38%;
+    --success: 158 40% 32%;
+    --warning: 38 65% 42%;
 
-    --border: 30 15% 86%;
-    --input: 30 15% 88%;
-    --ring: 42 74% 36%;
+    --border: 30 12% 88%;
+    --input: 30 12% 90%;
+    --ring: 32 45% 45%;
 
     --radius: 0.625rem;
 
     /* Gradients — restrained, warm */
-    --gradient-primary: linear-gradient(135deg, hsl(40 74% 34%), hsl(47 85% 46%));
-    --gradient-glow: radial-gradient(circle at 30% 20%, hsl(40 68% 38% / 0.10), transparent 60%);
-    --gradient-card: linear-gradient(160deg, hsl(30 26% 97% / 0.95), hsl(32 24% 94% / 0.9));
-    --gradient-sheen: linear-gradient(135deg, hsl(40 68% 38% / 0.08), hsl(40 68% 38% / 0));
-    --gradient-aurora: radial-gradient(ellipse 70% 45% at 50% -10%, hsl(42 60% 72% / 0.16), transparent 70%);
+    --gradient-primary: linear-gradient(135deg, hsl(32 45% 45%), hsl(28 50% 52%));
+    --gradient-glow: radial-gradient(circle at 30% 20%, hsl(32 45% 45% / 0.10), transparent 60%);
+    --gradient-card: linear-gradient(160deg, hsl(0 0% 100% / 0.95), hsl(30 20% 97% / 0.9));
+    --gradient-sheen: linear-gradient(135deg, hsl(32 45% 45% / 0.08), hsl(32 45% 45% / 0));
+    --gradient-aurora: radial-gradient(ellipse 70% 45% at 50% -10%, hsl(32 40% 70% / 0.15), transparent 70%);
 
     /* Shadows */
-    --shadow-elegant: 0 24px 60px -28px hsl(220 25% 25% / 0.14);
-    --shadow-glow: 0 0 32px hsl(40 68% 38% / 0.12);
-    --shadow-soft: 0 4px 20px -6px hsl(220 25% 25% / 0.10);
+    --shadow-elegant: 0 24px 60px -28px hsl(220 30% 20% / 0.18);
+    --shadow-glow: 0 0 32px hsl(32 45% 45% / 0.12);
+    --shadow-soft: 0 4px 20px -6px hsl(220 30% 20% / 0.12);
 
     --ease-smooth: cubic-bezier(0.22, 1, 0.36, 1);
     --duration-base: 350ms;
 
     /* Sidebar */
-    --sidebar-background: 32 22% 93%;
-    --sidebar-foreground: 220 10% 32%;
-    --sidebar-primary: 42 74% 36%;
-    --sidebar-primary-foreground: 30 20% 98%;
-    --sidebar-accent: 30 18% 88%;
-    --sidebar-accent-foreground: 220 12% 20%;
-    --sidebar-border: 30 15% 86%;
-    --sidebar-ring: 42 74% 36%;
+    --sidebar-background: 30 18% 96%;
+    --sidebar-foreground: 220 10% 30%;
+    --sidebar-primary: 32 45% 45%;
+    --sidebar-primary-foreground: 30 15% 98%;
+    --sidebar-accent: 30 15% 91%;
+    --sidebar-accent-foreground: 220 15% 15%;
+    --sidebar-border: 30 12% 88%;
+    --sidebar-ring: 32 45% 45%;
   }
 
   .dark {
-    /* Graphite & Gold — dark mode (same gold tone as light mode) */
+    /* Graphite & Bronze — dark mode (original) */
     --background: 220 12% 7%;
     --foreground: 30 12% 90%;
 
@@ -77,10 +77,10 @@
     --popover: 220 12% 9%;
     --popover-foreground: 30 12% 90%;
 
-    /* Primary: rich gold — the signature (same tone in both themes) */
-    --primary: 42 74% 36%;
+    /* Primary: warm bronze — the signature */
+    --primary: 32 45% 58%;
     --primary-foreground: 220 15% 8%;
-    --primary-glow: 46 82% 34%;
+    --primary-glow: 34 55% 68%;
 
     --secondary: 220 8% 14%;
     --secondary-foreground: 30 10% 88%;
@@ -88,7 +88,7 @@
     --muted: 220 8% 12%;
     --muted-foreground: 30 6% 62%;
 
-    --accent: 42 70% 34%;
+    --accent: 32 38% 55%;
     --accent-foreground: 220 15% 8%;
 
     --destructive: 4 60% 55%;
@@ -99,29 +99,29 @@
 
     --border: 220 8% 16%;
     --input: 220 8% 14%;
-    --ring: 42 74% 36%;
+    --ring: 32 45% 58%;
 
     /* Gradients — restrained, warm */
-    --gradient-primary: linear-gradient(135deg, hsl(40 74% 34%), hsl(47 85% 46%));
-    --gradient-glow: radial-gradient(circle at 30% 20%, hsl(42 74% 36% / 0.20), transparent 60%);
+    --gradient-primary: linear-gradient(135deg, hsl(32 45% 52%), hsl(28 50% 62%));
+    --gradient-glow: radial-gradient(circle at 30% 20%, hsl(32 45% 58% / 0.18), transparent 60%);
     --gradient-card: linear-gradient(160deg, hsl(220 10% 12% / 0.95), hsl(220 12% 8% / 0.85));
-    --gradient-sheen: linear-gradient(135deg, hsl(42 74% 36% / 0.12), hsl(42 74% 36% / 0));
-    --gradient-aurora: radial-gradient(ellipse 70% 45% at 50% -10%, hsl(42 55% 40% / 0.20), transparent 70%);
+    --gradient-sheen: linear-gradient(135deg, hsl(32 45% 58% / 0.10), hsl(32 45% 58% / 0));
+    --gradient-aurora: radial-gradient(ellipse 70% 45% at 50% -10%, hsl(32 40% 35% / 0.18), transparent 70%);
 
     /* Shadows */
     --shadow-elegant: 0 24px 60px -28px hsl(220 30% 2% / 0.7);
-    --shadow-glow: 0 0 32px hsl(42 74% 36% / 0.20);
+    --shadow-glow: 0 0 32px hsl(32 45% 58% / 0.18);
     --shadow-soft: 0 4px 20px -6px hsl(220 30% 2% / 0.6);
 
     /* Sidebar */
     --sidebar-background: 220 14% 6%;
     --sidebar-foreground: 30 8% 76%;
-    --sidebar-primary: 42 74% 36%;
+    --sidebar-primary: 32 45% 58%;
     --sidebar-primary-foreground: 220 15% 8%;
     --sidebar-accent: 220 10% 11%;
     --sidebar-accent-foreground: 30 12% 92%;
     --sidebar-border: 220 8% 11%;
-    --sidebar-ring: 42 74% 36%;
+    --sidebar-ring: 32 45% 58%;
   }
 }
 

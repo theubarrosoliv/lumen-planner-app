@@ -4,7 +4,6 @@ import { useAppStore } from "@/store/useAppStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { WifiOff, ShieldCheck } from "lucide-react";
 import { LumenMark } from "@/components/LumenMark";
 import { toast } from "sonner";
 import {
@@ -42,6 +41,10 @@ export default function Auth() {
     const trimmedName = name.trim().slice(0, 80);
     if (mode === "signup" && !trimmedName) {
       toast.error("Informe seu nome.");
+      return;
+    }
+    if (password.length < 8) {
+      toast.error("Sua senha precisa ter pelo menos 8 caracteres.");
       return;
     }
     setBusy(true);
@@ -86,20 +89,6 @@ export default function Auth() {
           <p className="mt-6 max-w-md text-sm leading-relaxed text-muted-foreground md:text-base">
             Hábitos, agenda, metas e projetos. Em um só lugar.
           </p>
-          <div className="mt-8 grid max-w-md gap-3 text-sm">
-            <div className="flex items-center gap-3 rounded-xl border border-border bg-secondary/30 px-4 py-3">
-              <ShieldCheck className="h-4 w-4 text-primary-glow" />
-              <span className="text-muted-foreground">
-                Sua conta acompanha você — mesmo login em qualquer dispositivo
-              </span>
-            </div>
-            <div className="flex items-center gap-3 rounded-xl border border-border bg-secondary/30 px-4 py-3">
-              <WifiOff className="h-4 w-4 text-primary-glow" />
-              <span className="text-muted-foreground">
-                Continua funcionando offline; sincroniza quando voltar
-              </span>
-            </div>
-          </div>
         </div>
 
         {/* Form */}
@@ -172,7 +161,6 @@ export default function Auth() {
                   placeholder="••••••••"
                   autoComplete={mode === "signup" ? "new-password" : "current-password"}
                   required
-                  minLength={8}
                 />
               </div>
 

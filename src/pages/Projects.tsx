@@ -21,6 +21,7 @@ const STATUS_STYLES: Record<Project["status"], string> = {
   Concluído: "border-success/40 text-success",
   Planejamento: "border-warning/40 text-warning",
   "Em andamento": "border-primary/40 text-primary-glow",
+  "Não Iniciado": "border-border text-muted-foreground",
 };
 
 function fmtDate(d?: string) {
@@ -47,7 +48,7 @@ function ProjectDialog({
   const [name, setName] = useState(initial?.name ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [deadline, setDeadline] = useState(initial?.deadline && initial.deadline !== "—" ? initial.deadline : "");
-  const [status, setStatus] = useState<Project["status"]>(initial?.status ?? "Planejamento");
+  const [status, setStatus] = useState<Project["status"]>(initial?.status ?? "Não Iniciado");
 
   const submit = () => {
     if (!name.trim()) return toast.error("Nome do projeto é obrigatório.");
@@ -57,7 +58,7 @@ function ProjectDialog({
       setName("");
       setDescription("");
       setDeadline("");
-      setStatus("Planejamento");
+      setStatus("Não Iniciado");
     }
   };
 
@@ -85,6 +86,7 @@ function ProjectDialog({
                 onChange={(e) => setStatus(e.target.value as Project["status"])}
                 className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
               >
+                <option>Não Iniciado</option>
                 <option>Planejamento</option>
                 <option>Em andamento</option>
                 <option>Concluído</option>
@@ -269,6 +271,7 @@ export default function Projects() {
                     onChange={(e) => updateProject(p.id, { status: e.target.value as Project["status"] })}
                     className={`rounded-full border bg-transparent px-2 py-0.5 text-[10px] uppercase tracking-wider ${STATUS_STYLES[p.status]}`}
                   >
+                    <option>Não Iniciado</option>
                     <option>Planejamento</option>
                     <option>Em andamento</option>
                     <option>Concluído</option>
