@@ -128,10 +128,12 @@ function computeCandidates(data: any, prefs: NotificationPrefs, now: Date): Cand
     }
   }
 
-  if ((cats.eventReminder ?? true) && now.getHours() === prefs.dailyAgendaHour) {
+  if (cats.eventReminder ?? true) {
     for (const ev of data.events ?? []) {
       if (ev.notify === false) continue;
       if (ev.date !== today) continue;
+      const hour = typeof ev.notifyHour === "number" ? ev.notifyHour : prefs.dailyAgendaHour;
+      if (now.getHours() !== hour) continue;
       out.push({
         kind: "event_reminder",
         entityId: ev.id,
@@ -150,7 +152,8 @@ function computeCandidates(data: any, prefs: NotificationPrefs, now: Date): Cand
     const completed = !!h.completions?.[currentKey];
     if (completed) continue;
 
-    if (cats.habitReminder && now.getHours() === prefs.habitReminderHour) {
+    const reminderHour = typeof h.notifyHour === "number" ? h.notifyHour : prefs.habitReminderHour;
+    if (cats.habitReminder && now.getHours() === reminderHour) {
       out.push({
         kind: "habit_reminder",
         entityId: h.id,
@@ -161,7 +164,8 @@ function computeCandidates(data: any, prefs: NotificationPrefs, now: Date): Cand
       });
     }
 
-    if (cats.habitStreakRisk && now.getHours() === prefs.habitStreakRiskHour) {
+    const streakRiskHour = typeof h.notifyHour === "number" ? h.notifyHour : prefs.habitStreakRiskHour;
+    if (cats.habitStreakRisk && now.getHours() === streakRiskHour) {
       const streak = streakOf(h, now);
       if (streak >= 3) {
         out.push({

@@ -40,7 +40,12 @@ function HabitDialog({
   trigger: React.ReactNode;
   title: string;
   initial?: Partial<Habit>;
-  onSave: (v: { name: string; frequency: HabitFrequency; notify?: boolean }) => void;
+  onSave: (v: {
+    name: string;
+    frequency: HabitFrequency;
+    notify?: boolean;
+    notifyHour?: number;
+  }) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(initial?.name ?? "");
@@ -48,10 +53,11 @@ function HabitDialog({
     (initial?.frequency as HabitFrequency) ?? "daily",
   );
   const [notify, setNotify] = useState(initial?.notify !== false);
+  const [notifyHour, setNotifyHour] = useState<number | undefined>(initial?.notifyHour);
 
   const submit = () => {
     if (!name.trim()) return toast.error("Dê um nome ao hábito.");
-    onSave({ name: name.trim(), frequency, notify });
+    onSave({ name: name.trim(), frequency, notify, notifyHour });
     setOpen(false);
     if (!initial) {
       setName("");
@@ -95,7 +101,13 @@ function HabitDialog({
               preservados.
             </p>
           </div>
-          <NotifyField notify={notify} onNotifyChange={setNotify} timingKind="none" />
+          <NotifyField
+            notify={notify}
+            onNotifyChange={setNotify}
+            timingKind="hour"
+            timing={notifyHour}
+            onTimingChange={setNotifyHour}
+          />
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => setOpen(false)}>
@@ -126,7 +138,7 @@ export default function Habits() {
         action={
           <HabitDialog
             title="Novo hábito"
-            onSave={(v) => addHabit(v.name, v.frequency, v.notify)}
+            onSave={(v) => addHabit(v.name, v.frequency, v.notify, v.notifyHour)}
             trigger={
               <Button className="bg-gradient-primary shadow-elegant">
                 <Plus className="mr-1 h-4 w-4" /> Novo hábito
