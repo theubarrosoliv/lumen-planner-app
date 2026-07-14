@@ -12,6 +12,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { NotifyField } from "@/components/NotifyField";
 import { useAppStore, useUserData, dateKey, todayKey } from "@/store/useAppStore";
 import { CalEvent } from "@/store/types";
 import { toast } from "sonner";
@@ -41,16 +42,17 @@ function EventDialog({
   title: string;
   initial?: Partial<CalEvent>;
   defaultDate?: string;
-  onSave: (v: { title: string; date: string; color: string }) => void;
+  onSave: (v: { title: string; date: string; color: string; notify?: boolean }) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(initial?.title ?? "");
   const [color, setColor] = useState(initial?.color ?? "bg-primary");
   const [date, setDate] = useState(initial?.date ?? defaultDate ?? todayKey());
+  const [notify, setNotify] = useState(initial?.notify !== false);
 
   const submit = () => {
     if (!title.trim()) return toast.error("Defina o título do evento.");
-    onSave({ title: title.trim(), date, color });
+    onSave({ title: title.trim(), date, color, notify });
     setOpen(false);
     if (!initial) {
       setTitle("");
@@ -89,6 +91,7 @@ function EventDialog({
               ))}
             </div>
           </div>
+          <NotifyField notify={notify} onNotifyChange={setNotify} timingKind="none" />
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => setOpen(false)}>

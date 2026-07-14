@@ -3,8 +3,8 @@ import { Habit, HabitFrequency } from "../types";
 import { CoreState, mutate, uid } from "../core";
 
 export interface HabitsSlice {
-  addHabit: (name: string, frequency?: HabitFrequency) => void;
-  updateHabit: (id: string, patch: Partial<Pick<Habit, "name" | "frequency">>) => void;
+  addHabit: (name: string, frequency?: HabitFrequency, notify?: boolean) => void;
+  updateHabit: (id: string, patch: Partial<Pick<Habit, "name" | "frequency" | "notify">>) => void;
   removeHabit: (id: string) => void;
   toggleHabitPeriod: (id: string, key: string) => void;
 }
@@ -12,7 +12,7 @@ export interface HabitsSlice {
 export const createHabitsSlice = (
   persist: <T extends unknown[]>(fn: (...a: T) => void) => (...a: T) => void,
 ): StateCreator<CoreState & HabitsSlice, [], [], HabitsSlice> => (set) => ({
-  addHabit: persist((name: string, frequency: HabitFrequency = "daily") =>
+  addHabit: persist((name: string, frequency: HabitFrequency = "daily", notify?: boolean) =>
     set((s) =>
       mutate(s, (d) => ({
         ...d,
@@ -23,13 +23,14 @@ export const createHabitsSlice = (
             name: name.trim(),
             createdAt: new Date().toISOString(),
             frequency,
+            notify,
             completions: {},
           },
         ],
       })),
     ),
   ),
-  updateHabit: persist((id: string, patch: Partial<Pick<Habit, "name" | "frequency">>) =>
+  updateHabit: persist((id: string, patch: Partial<Pick<Habit, "name" | "frequency" | "notify">>) =>
     set((s) =>
       mutate(s, (d) => ({
         ...d,

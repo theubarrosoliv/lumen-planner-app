@@ -30,6 +30,8 @@ export const createGoalsSlice = (
               name: g.name,
               category: g.category,
               deadline: g.deadline,
+              notify: g.notify,
+              notifyDaysBefore: g.notifyDaysBefore,
               milestones: (g.milestones ?? []).map<Milestone>((m) => ({
                 id: uid(),
                 name: m.name,

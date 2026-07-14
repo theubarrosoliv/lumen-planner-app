@@ -18,6 +18,7 @@ const DEFAULT_TIMEZONE = "America/Sao_Paulo";
 interface NotificationCategoryPrefs {
   taskReminder: boolean;
   dailyAgenda: boolean;
+  eventReminder?: boolean; // optional: absent on prefs saved before this category existed
   habitReminder: boolean;
   habitStreakRisk: boolean;
   goalDeadline: boolean;
@@ -89,12 +90,15 @@ function computeCandidates(data: any, prefs: NotificationPrefs, now: Date): Cand
 
   if (cats.taskReminder) {
     for (const t of data.tasks ?? []) {
+      if (t.notify === false) continue;
       if (t.done || !t.time || t.time === "—" || !/^\d{2}:\d{2}$/.test(t.time)) continue;
       const [hh, mm] = t.time.split(":").map(Number);
       const due = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hh, mm);
       if (t.date !== today) continue;
+      const minutesBefore =
+        typeof t.notifyMinutesBefore === "number" ? t.notifyMinutesBefore : prefs.taskReminderMinutesBefore;
       const minutesUntil = (due.getTime() - now.getTime()) / 60_000;
-      if (minutesUntil <= prefs.taskReminderMinutesBefore && minutesUntil >= 0) {
+      if (minutesUntil <= minutesBefore && minutesUntil >= 0) {
         out.push({
           kind: "task_upcoming",
           entityId: t.id,
@@ -124,7 +128,23 @@ function computeCandidates(data: any, prefs: NotificationPrefs, now: Date): Cand
     }
   }
 
+  if ((cats.eventReminder ?? true) && now.getHours() === prefs.dailyAgendaHour) {
+    for (const ev of data.events ?? []) {
+      if (ev.notify === false) continue;
+      if (ev.date !== today) continue;
+      out.push({
+        kind: "event_reminder",
+        entityId: ev.id,
+        periodKey: today,
+        title: `Hoje: ${ev.title}`,
+        body: "Evento marcado para hoje.",
+        link: "/calendario",
+      });
+    }
+  }
+
   for (const h of data.habits ?? []) {
+    if (h.notify === false) continue;
     const freq: HabitFrequency = h.frequency ?? "daily";
     const currentKey = periodKeyFor(freq, now);
     const completed = !!h.completions?.[currentKey];
@@ -156,10 +176,15 @@ function computeCandidates(data: any, prefs: NotificationPrefs, now: Date): Cand
     }
   }
 
+  // A per-item notifyDaysBefore override is a single day, so it's an exact
+  // match (===) rather than the global deadlineLeadDays list membership.
+  const isDeadlineDue = (du: number | null, notifyDaysBefore?: number) =>
+    du !== null && (typeof notifyDaysBefore === "number" ? du === notifyDaysBefore : prefs.deadlineLeadDays.includes(du));
+
   if (cats.goalDeadline) {
     for (const g of data.goals ?? []) {
       const du = daysUntil(g.deadline, now);
-      if (du !== null && prefs.deadlineLeadDays.includes(du)) {
+      if (g.notify !== false && isDeadlineDue(du, g.notifyDaysBefore)) {
         out.push({
           kind: "goal_deadline",
           entityId: g.id,
@@ -171,9 +196,9 @@ function computeCandidates(data: any, prefs: NotificationPrefs, now: Date): Cand
       }
       if (cats.milestoneDeadline) {
         for (const m of g.milestones ?? []) {
-          if (m.done || !m.deadline) continue;
+          if (m.notify === false || m.done || !m.deadline) continue;
           const mdu = daysUntil(m.deadline, now);
-          if (mdu !== null && prefs.deadlineLeadDays.includes(mdu)) {
+          if (isDeadlineDue(mdu, m.notifyDaysBefore)) {
             out.push({
               kind: "milestone_deadline",
               entityId: m.id,
@@ -190,9 +215,9 @@ function computeCandidates(data: any, prefs: NotificationPrefs, now: Date): Cand
 
   if (cats.projectDeadline || cats.projectTaskDeadline) {
     for (const p of data.projects ?? []) {
-      if (p.status !== "Concluído" && cats.projectDeadline) {
+      if (p.status !== "Concluído" && cats.projectDeadline && p.notify !== false) {
         const du = daysUntil(p.deadline, now);
-        if (du !== null && prefs.deadlineLeadDays.includes(du)) {
+        if (isDeadlineDue(du, p.notifyDaysBefore)) {
           const done = (p.tasks ?? []).filter((t: any) => t.done).length;
           out.push({
             kind: "project_deadline",
@@ -206,9 +231,9 @@ function computeCandidates(data: any, prefs: NotificationPrefs, now: Date): Cand
       }
       if (cats.projectTaskDeadline) {
         for (const t of p.tasks ?? []) {
-          if (t.done || !t.deadline) continue;
+          if (t.notify === false || t.done || !t.deadline) continue;
           const tdu = daysUntil(t.deadline, now);
-          if (tdu !== null && prefs.deadlineLeadDays.includes(tdu)) {
+          if (isDeadlineDue(tdu, t.notifyDaysBefore)) {
             out.push({
               kind: "project_task_deadline",
               entityId: t.id,

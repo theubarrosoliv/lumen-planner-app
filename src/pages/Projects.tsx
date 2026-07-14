@@ -12,6 +12,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { NotifyField } from "@/components/NotifyField";
 import { useAppStore, useUserData } from "@/store/useAppStore";
 import { toast } from "sonner";
 import { Project, ProjectTask } from "@/store/types";
@@ -42,17 +43,35 @@ function ProjectDialog({
   trigger: React.ReactNode;
   title: string;
   initial?: Partial<Project>;
-  onSave: (v: { name: string; description: string; deadline: string; status: Project["status"] }) => void;
+  onSave: (v: {
+    name: string;
+    description: string;
+    deadline: string;
+    status: Project["status"];
+    notify?: boolean;
+    notifyDaysBefore?: number;
+  }) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(initial?.name ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
   const [deadline, setDeadline] = useState(initial?.deadline && initial.deadline !== "—" ? initial.deadline : "");
   const [status, setStatus] = useState<Project["status"]>(initial?.status ?? "Não Iniciado");
+  const [notify, setNotify] = useState(initial?.notify !== false);
+  const [notifyDaysBefore, setNotifyDaysBefore] = useState<number | undefined>(
+    initial?.notifyDaysBefore,
+  );
 
   const submit = () => {
     if (!name.trim()) return toast.error("Nome do projeto é obrigatório.");
-    onSave({ name: name.trim(), description: description.trim(), deadline: deadline || "—", status });
+    onSave({
+      name: name.trim(),
+      description: description.trim(),
+      deadline: deadline || "—",
+      status,
+      notify,
+      notifyDaysBefore,
+    });
     setOpen(false);
     if (!initial) {
       setName("");
@@ -97,6 +116,13 @@ function ProjectDialog({
               <Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
             </div>
           </div>
+          <NotifyField
+            notify={notify}
+            onNotifyChange={setNotify}
+            timingKind="daysBefore"
+            timing={notifyDaysBefore}
+            onTimingChange={setNotifyDaysBefore}
+          />
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => setOpen(false)}>
@@ -118,14 +144,23 @@ function ProjectTaskDialog({
 }: {
   trigger: React.ReactNode;
   initial?: Partial<ProjectTask>;
-  onSave: (v: { title: string; deadline?: string }) => void;
+  onSave: (v: {
+    title: string;
+    deadline?: string;
+    notify?: boolean;
+    notifyDaysBefore?: number;
+  }) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(initial?.title ?? "");
   const [deadline, setDeadline] = useState(initial?.deadline ?? "");
+  const [notify, setNotify] = useState(initial?.notify !== false);
+  const [notifyDaysBefore, setNotifyDaysBefore] = useState<number | undefined>(
+    initial?.notifyDaysBefore,
+  );
   const submit = () => {
     if (!title.trim()) return toast.error("Defina um título.");
-    onSave({ title: title.trim(), deadline: deadline || undefined });
+    onSave({ title: title.trim(), deadline: deadline || undefined, notify, notifyDaysBefore });
     setOpen(false);
   };
   return (
@@ -144,6 +179,13 @@ function ProjectTaskDialog({
             <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Prazo</Label>
             <Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
           </div>
+          <NotifyField
+            notify={notify}
+            onNotifyChange={setNotify}
+            timingKind="daysBefore"
+            timing={notifyDaysBefore}
+            onTimingChange={setNotifyDaysBefore}
+          />
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => setOpen(false)}>
