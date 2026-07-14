@@ -93,6 +93,53 @@ export interface MindMap {
   viewport?: { x: number; y: number; zoom: number };
 }
 
+export interface NotificationCategoryPrefs {
+  taskReminder: boolean;
+  dailyAgenda: boolean;
+  habitReminder: boolean;
+  habitStreakRisk: boolean;
+  goalDeadline: boolean;
+  milestoneDeadline: boolean;
+  projectDeadline: boolean;
+  projectTaskDeadline: boolean;
+}
+
+export interface NotificationPrefs {
+  enabled: boolean;
+  /** IANA timezone name, e.g. "America/Sao_Paulo". Captured client-side on first use. */
+  timezone?: string;
+  categories: NotificationCategoryPrefs;
+  /** Minutes before a Task's scheduled time to send the "compromisso próximo" reminder. */
+  taskReminderMinutesBefore: number;
+  /** Local hour (0-23) for the daily agenda summary. */
+  dailyAgendaHour: number;
+  /** Local hour (0-23) for the pending-habit reminder. */
+  habitReminderHour: number;
+  /** Local hour (0-23) for the "streak at risk" late-day nudge. */
+  habitStreakRiskHour: number;
+  /** Days-before-deadline thresholds for goal/milestone/project/project-task reminders. */
+  deadlineLeadDays: number[];
+}
+
+export const defaultNotificationPrefs = (): NotificationPrefs => ({
+  enabled: false,
+  categories: {
+    taskReminder: true,
+    dailyAgenda: true,
+    habitReminder: true,
+    habitStreakRisk: true,
+    goalDeadline: true,
+    milestoneDeadline: true,
+    projectDeadline: true,
+    projectTaskDeadline: true,
+  },
+  taskReminderMinutesBefore: 15,
+  dailyAgendaHour: 8,
+  habitReminderHour: 20,
+  habitStreakRiskHour: 22,
+  deadlineLeadDays: [3, 1],
+});
+
 export interface UserData {
   tasks: Task[];
   habits: Habit[];
@@ -100,6 +147,7 @@ export interface UserData {
   projects: Project[];
   events: CalEvent[];
   mindmaps: MindMap[];
+  notificationPrefs: NotificationPrefs;
 }
 
 export const emptyUserData = (): UserData => ({
@@ -109,4 +157,5 @@ export const emptyUserData = (): UserData => ({
   projects: [],
   events: [],
   mindmaps: [],
+  notificationPrefs: defaultNotificationPrefs(),
 });

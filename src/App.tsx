@@ -15,6 +15,7 @@ import Goals from "./pages/Goals";
 import Projects from "./pages/Projects";
 import MindMaps from "./pages/MindMaps";
 import MindMapPage from "./pages/MindMap";
+import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -42,6 +43,7 @@ const App = () => (
             <Route path="/projetos" element={wrap(<Projects />)} />
             <Route path="/mapas" element={wrap(<MindMaps />)} />
             <Route path="/mapas/:id" element={wrap(<MindMapPage />)} />
+            <Route path="/notificacoes" element={wrap(<Notifications />)} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

@@ -1,25 +1,9 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { isEmbeddedPreview } from "./lib/runtimeEnv";
 
-// Detect Lovable preview / iframe contexts. Service workers must NEVER run
-// here — they cause stale shells inside the editor preview.
-const isInIframe = (() => {
-  try {
-    return window.self !== window.top;
-  } catch {
-    return true;
-  }
-})();
-
-const host = window.location.hostname;
-const isPreviewHost =
-  host.includes("id-preview--") ||
-  host.includes("lovableproject.com") ||
-  host.includes("lovableproject-dev.com") ||
-  host.endsWith("lovable.app") && host.startsWith("preview--");
-
-if (isInIframe || isPreviewHost) {
+if (isEmbeddedPreview()) {
   // Strip any previously-installed SW + caches in preview/editor contexts.
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.getRegistrations().then((regs) =>

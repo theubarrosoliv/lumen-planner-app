@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { UserData } from "./types";
+import { UserData, defaultNotificationPrefs } from "./types";
 import { supabase } from "@/integrations/supabase/client";
 import { CoreState, cache, scheduleCloudSave, writeCache } from "./core";
 import { AuthSlice, createAuthSlice } from "./slices/authSlice";
@@ -9,6 +9,7 @@ import { GoalsSlice, createGoalsSlice } from "./slices/goalsSlice";
 import { ProjectsSlice, createProjectsSlice } from "./slices/projectsSlice";
 import { EventsSlice, createEventsSlice } from "./slices/eventsSlice";
 import { MindmapsSlice, createMindmapsSlice } from "./slices/mindmapsSlice";
+import { NotificationsSlice, createNotificationsSlice } from "./slices/notificationsSlice";
 
 type State = CoreState &
   AuthSlice &
@@ -17,7 +18,8 @@ type State = CoreState &
   GoalsSlice &
   ProjectsSlice &
   EventsSlice &
-  MindmapsSlice;
+  MindmapsSlice &
+  NotificationsSlice;
 
 export const useAppStore = create<State>()((set, get, api) => {
   // Persist to localStorage cache + schedule a debounced cloud save on every
@@ -49,6 +51,7 @@ export const useAppStore = create<State>()((set, get, api) => {
     ...createProjectsSlice(persist)(set, get, api),
     ...createEventsSlice(persist)(set, get, api),
     ...createMindmapsSlice(persist, persistAll)(set, get, api),
+    ...createNotificationsSlice(persist)(set, get, api),
   };
 });
 
@@ -82,7 +85,15 @@ supabase.auth.onAuthStateChange((event, session) => {
 
 // Stable empty reference — never return a fresh object from selectors,
 // or useSyncExternalStore will loop forever.
-const EMPTY_USER_DATA: UserData = { tasks: [], habits: [], goals: [], projects: [], events: [], mindmaps: [] };
+const EMPTY_USER_DATA: UserData = {
+  tasks: [],
+  habits: [],
+  goals: [],
+  projects: [],
+  events: [],
+  mindmaps: [],
+  notificationPrefs: defaultNotificationPrefs(),
+};
 
 // Selector helper to get current user's data slice reactively.
 export const useUserData = (): UserData => {
