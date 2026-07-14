@@ -1,6 +1,7 @@
 import { StateCreator } from "zustand";
 import { Goal, Milestone } from "../types";
 import { CoreState, mutate, uid } from "../core";
+import { notifyLocal } from "@/lib/localNotify";
 
 export interface GoalsSlice {
   addGoal: (
@@ -16,7 +17,7 @@ export interface GoalsSlice {
 
 export const createGoalsSlice = (
   persist: <T extends unknown[]>(fn: (...a: T) => void) => (...a: T) => void,
-): StateCreator<CoreState & GoalsSlice, [], [], GoalsSlice> => (set) => ({
+): StateCreator<CoreState & GoalsSlice, [], [], GoalsSlice> => (set, get) => ({
   addGoal: persist(
     (g: Omit<Goal, "id" | "milestones"> & { milestones?: { name: string; deadline?: string }[] }) =>
       set((s) =>
@@ -80,7 +81,10 @@ export const createGoalsSlice = (
       })),
     ),
   ),
-  toggleMilestone: persist((goalId: string, milestoneId: string) =>
+  toggleMilestone: persist((goalId: string, milestoneId: string) => {
+    const userId = get().currentUserId;
+    const before = userId ? get().data[userId]?.goals.find((g) => g.id === goalId) : undefined;
+
     set((s) =>
       mutate(s, (d) => ({
         ...d,
@@ -95,8 +99,15 @@ export const createGoalsSlice = (
             : g,
         ),
       })),
-    ),
-  ),
+    );
+
+    if (before && before.milestones.length > 0 && !before.milestones.every((m) => m.done)) {
+      const after = userId ? get().data[userId]?.goals.find((g) => g.id === goalId) : undefined;
+      if (after && after.milestones.every((m) => m.done)) {
+        notifyLocal("🎉 Meta concluída", after.name);
+      }
+    }
+  }),
   removeMilestone: persist((goalId: string, milestoneId: string) =>
     set((s) =>
       mutate(s, (d) => ({

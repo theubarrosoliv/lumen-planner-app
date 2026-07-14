@@ -14,6 +14,63 @@ export type Database = {
   }
   public: {
     Tables: {
+      fcm_tokens: {
+        Row: {
+          created_at: string
+          id: string
+          last_seen_at: string
+          platform: string | null
+          token: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_seen_at?: string
+          platform?: string | null
+          token: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_seen_at?: string
+          platform?: string | null
+          token?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notification_log: {
+        Row: {
+          entity_id: string
+          id: string
+          kind: string
+          period_key: string
+          sent_at: string
+          user_id: string
+        }
+        Insert: {
+          entity_id: string
+          id?: string
+          kind: string
+          period_key: string
+          sent_at?: string
+          user_id: string
+        }
+        Update: {
+          entity_id?: string
+          id?: string
+          kind?: string
+          period_key?: string
+          sent_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string

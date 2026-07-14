@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
-import { LogOut, WifiOff } from "lucide-react";
+import { LogOut, WifiOff, BellRing } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/store/useAppStore";
@@ -76,6 +76,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                       <span className="text-xs text-muted-foreground">{user?.email}</span>
                     </div>
                   </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => navigate("/notificacoes")}
+                    className="cursor-pointer"
+                  >
+                    <BellRing className="mr-2 h-4 w-4" />
+                    Notificações
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={() => {
