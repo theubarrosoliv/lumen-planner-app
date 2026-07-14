@@ -3,13 +3,31 @@ import { getMessaging, isSupported, type Messaging } from "firebase/messaging";
 import { isEmbeddedPreview } from "@/lib/runtimeEnv";
 import { isMobileDevice } from "@/lib/deviceDetect";
 
+/**
+ * Trims whitespace/newlines and strips accidental wrapping quotes — guards
+ * against the classic "pasted the .env value including the surrounding
+ * quotes into a dashboard env var field" mistake, which silently corrupts
+ * the VAPID key (browser rejects it with "must contain a valid P-256
+ * public key") without any indication of why.
+ */
+function sanitizeEnvValue(v: string | undefined): string | undefined {
+  if (!v) return v;
+  const trimmed = v.trim();
+  const unquoted =
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+      ? trimmed.slice(1, -1)
+      : trimmed;
+  return unquoted;
+}
+
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  apiKey: sanitizeEnvValue(import.meta.env.VITE_FIREBASE_API_KEY),
+  authDomain: sanitizeEnvValue(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN),
+  projectId: sanitizeEnvValue(import.meta.env.VITE_FIREBASE_PROJECT_ID),
+  storageBucket: sanitizeEnvValue(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET),
+  messagingSenderId: sanitizeEnvValue(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID),
+  appId: sanitizeEnvValue(import.meta.env.VITE_FIREBASE_APP_ID),
 };
 
 let app: FirebaseApp | null = null;
@@ -38,4 +56,4 @@ export async function getFirebaseMessaging(): Promise<Messaging | null> {
   return messagingPromise;
 }
 
-export const firebaseVapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY as string | undefined;
+export const firebaseVapidKey = sanitizeEnvValue(import.meta.env.VITE_FIREBASE_VAPID_KEY);

@@ -36,6 +36,8 @@ export interface Habit {
   completions: Record<string, boolean>;
   /** Per-item notification opt-out; absent/undefined counts as enabled. */
   notify?: boolean;
+  /** Overrides both global habitReminderHour and habitStreakRiskHour for this habit only. */
+  notifyHour?: number;
 }
 
 export interface Milestone {
@@ -92,6 +94,8 @@ export interface CalEvent {
   color: string; // bg-* class
   /** Per-item notification opt-out; absent/undefined counts as enabled. */
   notify?: boolean;
+  /** Overrides the global dailyAgendaHour for this event's day-of reminder only. */
+  notifyHour?: number;
 }
 
 export interface MindNode {

@@ -2,11 +2,16 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 
-export type NotifyTimingKind = "minutesBefore" | "daysBefore" | "none";
+export type NotifyTimingKind = "minutesBefore" | "daysBefore" | "hour" | "none";
 
 const TIMING_LABEL: Record<Exclude<NotifyTimingKind, "none">, string> = {
   minutesBefore: "Avisar quantos minutos antes",
   daysBefore: "Avisar quantos dias antes",
+  hour: "Horário do lembrete (0-23h)",
+};
+
+const TIMING_LIMITS: Partial<Record<NotifyTimingKind, { min: number; max: number }>> = {
+  hour: { min: 0, max: 23 },
 };
 
 /**
@@ -47,8 +52,9 @@ export function NotifyField({
           </Label>
           <Input
             type="number"
-            min={0}
-            placeholder={globalDefault !== undefined ? `Padrão: ${globalDefault}` : undefined}
+            min={TIMING_LIMITS[timingKind]?.min ?? 0}
+            max={TIMING_LIMITS[timingKind]?.max}
+            placeholder={globalDefault !== undefined ? `Padrão: ${globalDefault}` : "Personalizado"}
             value={timing ?? ""}
             onChange={(e) => {
               const raw = e.target.value;

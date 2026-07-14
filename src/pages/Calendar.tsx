@@ -42,17 +42,18 @@ function EventDialog({
   title: string;
   initial?: Partial<CalEvent>;
   defaultDate?: string;
-  onSave: (v: { title: string; date: string; color: string; notify?: boolean }) => void;
+  onSave: (v: { title: string; date: string; color: string; notify?: boolean; notifyHour?: number }) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(initial?.title ?? "");
   const [color, setColor] = useState(initial?.color ?? "bg-primary");
   const [date, setDate] = useState(initial?.date ?? defaultDate ?? todayKey());
   const [notify, setNotify] = useState(initial?.notify !== false);
+  const [notifyHour, setNotifyHour] = useState<number | undefined>(initial?.notifyHour);
 
   const submit = () => {
     if (!title.trim()) return toast.error("Defina o título do evento.");
-    onSave({ title: title.trim(), date, color, notify });
+    onSave({ title: title.trim(), date, color, notify, notifyHour });
     setOpen(false);
     if (!initial) {
       setTitle("");
@@ -91,7 +92,13 @@ function EventDialog({
               ))}
             </div>
           </div>
-          <NotifyField notify={notify} onNotifyChange={setNotify} timingKind="none" />
+          <NotifyField
+            notify={notify}
+            onNotifyChange={setNotify}
+            timingKind="hour"
+            timing={notifyHour}
+            onTimingChange={setNotifyHour}
+          />
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => setOpen(false)}>

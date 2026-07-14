@@ -23,6 +23,31 @@ function computeBaseStatus(): PushStatus | null {
   return null;
 }
 
+/**
+ * A valid VAPID public key is a base64url-encoded uncompressed P-256 EC
+ * point: exactly 65 bytes, first byte 0x04. Checking this ourselves turns
+ * "applicationServerKey must contain a valid P-256 public key" (which gives
+ * no hint about *why*) into a message that names the actual problem —
+ * usually a mismatched/truncated env var, or quotes pasted along with the
+ * value into a dashboard field.
+ */
+function vapidKeyError(key: string): string | null {
+  try {
+    const b64 = key.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = b64 + "=".repeat((4 - (b64.length % 4)) % 4);
+    const bytes = atob(padded);
+    if (bytes.length !== 65) {
+      return `VAPID key com tamanho inválido (${bytes.length} bytes, esperado 65) — confira se o valor de VITE_FIREBASE_VAPID_KEY está completo e sem aspas/espaços extras.`;
+    }
+    if (bytes.charCodeAt(0) !== 0x04) {
+      return "VAPID key não começa com o prefixo esperado (0x04) — confira se é a chave pública ('Web Push certificate') e não outra.";
+    }
+    return null;
+  } catch {
+    return "VAPID key não é base64url válido — confira o valor de VITE_FIREBASE_VAPID_KEY.";
+  }
+}
+
 /** Resolves once the given registration has an active worker — getToken()
  * can fail or hang if called against a still-installing worker, which is
  * exactly the state a brand-new (never-before-registered) SW is in. */
@@ -63,6 +88,8 @@ export function usePushNotifications() {
       const messaging = await getFirebaseMessaging();
       if (!messaging) throw new Error("Firebase Messaging indisponível neste navegador.");
       if (!firebaseVapidKey) throw new Error("VAPID key não configurada (VITE_FIREBASE_VAPID_KEY).");
+      const vapidError = vapidKeyError(firebaseVapidKey);
+      if (vapidError) throw new Error(vapidError);
 
       const registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
       await waitForActive(registration);
