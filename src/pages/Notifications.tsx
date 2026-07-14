@@ -11,6 +11,7 @@ import { NotificationCategoryPrefs } from "@/store/types";
 const CATEGORY_LABELS: Record<keyof NotificationCategoryPrefs, string> = {
   taskReminder: "Compromissos próximos",
   dailyAgenda: "Agenda do dia",
+  eventReminder: "Evento do dia",
   habitReminder: "Lembrete de hábito pendente",
   habitStreakRisk: "Sequência de hábito em risco",
   goalDeadline: "Prazo de meta próximo",
@@ -20,7 +21,7 @@ const CATEGORY_LABELS: Record<keyof NotificationCategoryPrefs, string> = {
 };
 
 export default function Notifications() {
-  const { status, enable } = usePushNotifications();
+  const { status, enable, tokenStatus, tokenError } = usePushNotifications();
   const { notificationPrefs: prefs } = useUserData();
   const setNotificationPrefs = useAppStore((s) => s.setNotificationPrefs);
 
@@ -79,6 +80,16 @@ export default function Notifications() {
               onCheckedChange={(checked) => checked && enable()}
             />
           </div>
+
+          {status === "granted" && (
+            <p className="px-1 text-xs text-muted-foreground">
+              {tokenStatus === "registering" && "Registrando este dispositivo…"}
+              {tokenStatus === "saved" && "✓ Dispositivo registrado para receber notificações."}
+              {tokenStatus === "error" && (
+                <span className="text-destructive">Falha ao registrar dispositivo: {tokenError}</span>
+              )}
+            </p>
+          )}
 
           {status === "granted" && (
             <>

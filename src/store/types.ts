@@ -13,6 +13,10 @@ export interface Task {
   tag: string;
   done: boolean;
   notes?: string;
+  /** Per-item notification opt-out; absent/undefined counts as enabled. */
+  notify?: boolean;
+  /** Overrides the global taskReminderMinutesBefore for this task only. */
+  notifyMinutesBefore?: number;
 }
 
 export type HabitFrequency = "daily" | "weekly" | "monthly";
@@ -30,6 +34,8 @@ export interface Habit {
    * Past completions are preserved even when frequency changes.
    */
   completions: Record<string, boolean>;
+  /** Per-item notification opt-out; absent/undefined counts as enabled. */
+  notify?: boolean;
 }
 
 export interface Milestone {
@@ -37,6 +43,10 @@ export interface Milestone {
   name: string;
   done: boolean;
   deadline?: string; // YYYY-MM-DD
+  /** Per-item notification opt-out; absent/undefined counts as enabled. */
+  notify?: boolean;
+  /** Overrides the global deadlineLeadDays for this milestone only. */
+  notifyDaysBefore?: number;
 }
 
 export interface Goal {
@@ -45,6 +55,10 @@ export interface Goal {
   category: string;
   deadline: string; // free text or YYYY-MM-DD
   milestones: Milestone[];
+  /** Per-item notification opt-out; absent/undefined counts as enabled. */
+  notify?: boolean;
+  /** Overrides the global deadlineLeadDays for this goal only. */
+  notifyDaysBefore?: number;
 }
 
 export interface ProjectTask {
@@ -52,6 +66,10 @@ export interface ProjectTask {
   title: string;
   done: boolean;
   deadline?: string; // YYYY-MM-DD
+  /** Per-item notification opt-out; absent/undefined counts as enabled. */
+  notify?: boolean;
+  /** Overrides the global deadlineLeadDays for this project task only. */
+  notifyDaysBefore?: number;
 }
 
 export interface Project {
@@ -61,6 +79,10 @@ export interface Project {
   status: "Não Iniciado" | "Planejamento" | "Em andamento" | "Concluído";
   deadline: string;
   tasks: ProjectTask[];
+  /** Per-item notification opt-out; absent/undefined counts as enabled. */
+  notify?: boolean;
+  /** Overrides the global deadlineLeadDays for this project only. */
+  notifyDaysBefore?: number;
 }
 
 export interface CalEvent {
@@ -68,6 +90,8 @@ export interface CalEvent {
   date: string; // YYYY-MM-DD
   title: string;
   color: string; // bg-* class
+  /** Per-item notification opt-out; absent/undefined counts as enabled. */
+  notify?: boolean;
 }
 
 export interface MindNode {
@@ -96,6 +120,7 @@ export interface MindMap {
 export interface NotificationCategoryPrefs {
   taskReminder: boolean;
   dailyAgenda: boolean;
+  eventReminder: boolean;
   habitReminder: boolean;
   habitStreakRisk: boolean;
   goalDeadline: boolean;
@@ -126,6 +151,7 @@ export const defaultNotificationPrefs = (): NotificationPrefs => ({
   categories: {
     taskReminder: true,
     dailyAgenda: true,
+    eventReminder: true,
     habitReminder: true,
     habitStreakRisk: true,
     goalDeadline: true,

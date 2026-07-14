@@ -14,6 +14,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { CreatableSelect } from "@/components/CreatableSelect";
+import { NotifyField } from "@/components/NotifyField";
 import { useCustomOptions } from "@/hooks/use-custom-options";
 import { useAppStore, useUserData } from "@/store/useAppStore";
 import { toast } from "sonner";
@@ -41,12 +42,22 @@ function GoalDialog({
   trigger: React.ReactNode;
   title: string;
   initial?: Partial<Goal>;
-  onSave: (v: { name: string; category: string; deadline: string }) => void;
+  onSave: (v: {
+    name: string;
+    category: string;
+    deadline: string;
+    notify?: boolean;
+    notifyDaysBefore?: number;
+  }) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(initial?.name ?? "");
   const [category, setCategory] = useState(initial?.category ?? "Carreira");
   const [deadline, setDeadline] = useState(initial?.deadline === "Sem prazo" ? "" : initial?.deadline ?? "");
+  const [notify, setNotify] = useState(initial?.notify !== false);
+  const [notifyDaysBefore, setNotifyDaysBefore] = useState<number | undefined>(
+    initial?.notifyDaysBefore,
+  );
   const {
     options: categoryOptions,
     custom: customCategories,
@@ -57,7 +68,7 @@ function GoalDialog({
 
   const submit = () => {
     if (!name.trim()) return toast.error("Defina o nome da meta.");
-    onSave({ name: name.trim(), category, deadline: deadline || "Sem prazo" });
+    onSave({ name: name.trim(), category, deadline: deadline || "Sem prazo", notify, notifyDaysBefore });
     setOpen(false);
     if (!initial) {
       setName("");
@@ -97,6 +108,13 @@ function GoalDialog({
               <Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
             </div>
           </div>
+          <NotifyField
+            notify={notify}
+            onNotifyChange={setNotify}
+            timingKind="daysBefore"
+            timing={notifyDaysBefore}
+            onTimingChange={setNotifyDaysBefore}
+          />
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => setOpen(false)}>
@@ -118,14 +136,23 @@ function MilestoneDialog({
 }: {
   trigger: React.ReactNode;
   initial?: Partial<Milestone>;
-  onSave: (v: { name: string; deadline?: string }) => void;
+  onSave: (v: {
+    name: string;
+    deadline?: string;
+    notify?: boolean;
+    notifyDaysBefore?: number;
+  }) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(initial?.name ?? "");
   const [deadline, setDeadline] = useState(initial?.deadline ?? "");
+  const [notify, setNotify] = useState(initial?.notify !== false);
+  const [notifyDaysBefore, setNotifyDaysBefore] = useState<number | undefined>(
+    initial?.notifyDaysBefore,
+  );
   const submit = () => {
     if (!name.trim()) return toast.error("Nome do marco é obrigatório.");
-    onSave({ name: name.trim(), deadline: deadline || undefined });
+    onSave({ name: name.trim(), deadline: deadline || undefined, notify, notifyDaysBefore });
     setOpen(false);
   };
   return (
@@ -144,6 +171,13 @@ function MilestoneDialog({
             <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Prazo</Label>
             <Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
           </div>
+          <NotifyField
+            notify={notify}
+            onNotifyChange={setNotify}
+            timingKind="daysBefore"
+            timing={notifyDaysBefore}
+            onTimingChange={setNotifyDaysBefore}
+          />
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => setOpen(false)}>

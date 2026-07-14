@@ -104,9 +104,25 @@ export const createAuthSlice: StateCreator<
       ]);
       const cloud = (row?.data as unknown as UserData) ?? null;
       set((s) => {
+        const base = emptyUserData();
+        // Deep-merge notificationPrefs/categories specifically, so a key
+        // added after a user's prefs were first saved (e.g. a new
+        // notification category) falls back to its default instead of
+        // being silently absent from an old stored blob.
         const merged: UserData = cloud && Object.keys(cloud).length
-          ? { ...emptyUserData(), ...cloud }
-          : (s.data[userId] ?? emptyUserData());
+          ? {
+              ...base,
+              ...cloud,
+              notificationPrefs: {
+                ...base.notificationPrefs,
+                ...cloud.notificationPrefs,
+                categories: {
+                  ...base.notificationPrefs.categories,
+                  ...cloud.notificationPrefs?.categories,
+                },
+              },
+            }
+          : (s.data[userId] ?? base);
         return {
           hydrated: true,
           data: { ...s.data, [userId]: merged },

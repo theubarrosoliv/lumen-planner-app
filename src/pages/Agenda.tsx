@@ -13,6 +13,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { CreatableSelect } from "@/components/CreatableSelect";
+import { NotifyField } from "@/components/NotifyField";
 import { useCustomOptions } from "@/hooks/use-custom-options";
 import { useAppStore, useUserData, todayKey, dateKey } from "@/store/useAppStore";
 import { Task } from "@/store/types";
@@ -36,7 +37,15 @@ function TaskDialog({
   title,
 }: {
   initial?: Partial<Task>;
-  onSave: (t: { time: string; title: string; tag: string; date: string; notes?: string }) => void;
+  onSave: (t: {
+    time: string;
+    title: string;
+    tag: string;
+    date: string;
+    notes?: string;
+    notify?: boolean;
+    notifyMinutesBefore?: number;
+  }) => void;
   trigger: React.ReactNode;
   title: string;
 }) {
@@ -45,6 +54,11 @@ function TaskDialog({
   const [time, setTime] = useState(initial?.time && initial.time !== "—" ? initial.time : "");
   const [tag, setTag] = useState(initial?.tag ?? "Foco");
   const [date, setDate] = useState(initial?.date ?? todayKey());
+  const [notify, setNotify] = useState(initial?.notify !== false);
+  const [notifyMinutesBefore, setNotifyMinutesBefore] = useState<number | undefined>(
+    initial?.notifyMinutesBefore,
+  );
+  const { notificationPrefs } = useUserData();
   const {
     options: tagOptions,
     custom: customTags,
@@ -58,7 +72,7 @@ function TaskDialog({
       toast.error("Dê um título à tarefa.");
       return;
     }
-    onSave({ title: text.trim(), time: time || "—", tag, date });
+    onSave({ title: text.trim(), time: time || "—", tag, date, notify, notifyMinutesBefore });
     setOpen(false);
     if (!initial) {
       setText("");
@@ -100,6 +114,14 @@ function TaskDialog({
               onRename={renameTagOption}
             />
           </div>
+          <NotifyField
+            notify={notify}
+            onNotifyChange={setNotify}
+            timingKind="minutesBefore"
+            timing={notifyMinutesBefore}
+            onTimingChange={setNotifyMinutesBefore}
+            globalDefault={notificationPrefs.taskReminderMinutesBefore}
+          />
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => setOpen(false)}>

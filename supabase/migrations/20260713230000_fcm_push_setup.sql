@@ -51,11 +51,15 @@ GRANT ALL ON public.notification_log TO service_role;
 CREATE EXTENSION IF NOT EXISTS pg_cron;
 CREATE EXTENSION IF NOT EXISTS pg_net;
 
--- NOTE: this migration deliberately stops here. The cron.schedule() call
--- below needs the send-notifications Edge Function deployed AND the
--- service_role key stored in Vault first — do not hardcode the raw key into
--- a committed migration file. Run this manually (dashboard SQL editor or
--- psql) once both are ready, replacing <PROJECT_REF>:
+-- Cron dispatch: the service_role key is NOT hardcoded here — it's stored in
+-- Supabase Vault (`vault.create_secret`) and looked up at call time via
+-- `vault.decrypted_secrets`, so this file never contains the raw secret.
+-- Applied manually against the live project (jobid 1, active). The URL uses
+-- the {SUPABASE_URL}/functions/v1/{name} gateway route (confirmed working
+-- for this project) rather than the {ref}.functions.supabase.co custom
+-- domain — both exist, this is just the one actually configured below.
+--
+-- To reproduce on a fresh project:
 --
 --   select vault.create_secret('<SERVICE_ROLE_KEY>', 'service_role_key');
 --
@@ -64,7 +68,7 @@ CREATE EXTENSION IF NOT EXISTS pg_net;
 --     '*/5 * * * *',
 --     $cron$
 --     select net.http_post(
---       url := 'https://<PROJECT_REF>.functions.supabase.co/send-notifications',
+--       url := 'https://<PROJECT_REF>.supabase.co/functions/v1/send-notifications',
 --       headers := jsonb_build_object(
 --         'Authorization', 'Bearer ' || (
 --           select decrypted_secret from vault.decrypted_secrets

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { getToken } from "firebase/messaging";
+import { toast } from "sonner";
 import { getFirebaseMessaging, firebaseVapidKey } from "@/integrations/firebase/client";
 import { isEmbeddedPreview } from "@/lib/runtimeEnv";
 import { isMobileDevice, isIOS, isStandalonePWA } from "@/lib/deviceDetect";
@@ -13,11 +14,31 @@ export type PushStatus =
   | "denied"
   | "granted";
 
+export type TokenStatus = "idle" | "registering" | "saved" | "error";
+
 function computeBaseStatus(): PushStatus | null {
   if (isEmbeddedPreview() || !isMobileDevice()) return "unsupported";
   if (isIOS() && !isStandalonePWA()) return "ios-needs-install";
   if (typeof Notification === "undefined") return "unsupported";
   return null;
+}
+
+/** Resolves once the given registration has an active worker — getToken()
+ * can fail or hang if called against a still-installing worker, which is
+ * exactly the state a brand-new (never-before-registered) SW is in. */
+async function waitForActive(registration: ServiceWorkerRegistration): Promise<void> {
+  if (registration.active) return;
+  const worker = registration.installing ?? registration.waiting;
+  if (!worker) return;
+  await new Promise<void>((resolve) => {
+    const handleChange = () => {
+      if (worker.state === "activated") {
+        worker.removeEventListener("statechange", handleChange);
+        resolve();
+      }
+    };
+    worker.addEventListener("statechange", handleChange);
+  });
 }
 
 export function usePushNotifications() {
@@ -31,19 +52,28 @@ export function usePushNotifications() {
         ? "denied"
         : "idle";
   });
+  const [tokenStatus, setTokenStatus] = useState<TokenStatus>("idle");
+  const [tokenError, setTokenError] = useState<string | null>(null);
 
   const registerToken = useCallback(async () => {
     if (!userId) return;
-    const messaging = await getFirebaseMessaging();
-    if (!messaging || !firebaseVapidKey) return;
+    setTokenStatus("registering");
+    setTokenError(null);
     try {
+      const messaging = await getFirebaseMessaging();
+      if (!messaging) throw new Error("Firebase Messaging indisponível neste navegador.");
+      if (!firebaseVapidKey) throw new Error("VAPID key não configurada (VITE_FIREBASE_VAPID_KEY).");
+
       const registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+      await waitForActive(registration);
+
       const token = await getToken(messaging, {
         vapidKey: firebaseVapidKey,
         serviceWorkerRegistration: registration,
       });
-      if (!token) return;
-      await supabase.from("fcm_tokens").upsert(
+      if (!token) throw new Error("getToken() não retornou um token.");
+
+      const { error } = await supabase.from("fcm_tokens").upsert(
         {
           user_id: userId,
           token,
@@ -53,8 +83,15 @@ export function usePushNotifications() {
         },
         { onConflict: "user_id,token" },
       );
+      if (error) throw error;
+
+      setTokenStatus("saved");
     } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
       console.warn("push token registration failed", e);
+      setTokenStatus("error");
+      setTokenError(message);
+      toast.error("Falha ao registrar notificações", { description: message });
     }
   }, [userId]);
 
@@ -80,5 +117,5 @@ export function usePushNotifications() {
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [status, registerToken]);
 
-  return { status, enable };
+  return { status, enable, tokenStatus, tokenError };
 }
