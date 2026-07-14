@@ -50,7 +50,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         <AppSidebar />
 
         <div className="flex flex-1 flex-col">
-          <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-background/70 px-4 backdrop-blur-xl md:px-8">
+          <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-background/70 px-4 pt-safe-top backdrop-blur-xl md:px-8">
             <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
 
             <div className="ml-auto flex items-center gap-2">
@@ -100,7 +100,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             </div>
           </header>
 
-          <main className="flex-1 px-4 py-6 md:px-8 md:py-10">{children}</main>
+          <main className="flex-1 px-4 py-6 pb-safe-bottom md:px-8 md:py-10">{children}</main>
         </div>
       </div>
     </SidebarProvider>
