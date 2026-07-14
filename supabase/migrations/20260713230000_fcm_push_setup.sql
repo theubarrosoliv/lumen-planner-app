@@ -51,23 +51,28 @@ GRANT ALL ON public.notification_log TO service_role;
 CREATE EXTENSION IF NOT EXISTS pg_cron;
 CREATE EXTENSION IF NOT EXISTS pg_net;
 
--- NOTE: replace both placeholders before applying this migration:
---   <PROJECT_REF>         - your Supabase project ref (e.g. vruszhxtfhcfovjebieb)
---   <SERVICE_ROLE_KEY>    - the service_role key from Project Settings > API
--- Storing the raw key in a cron job body is a stopgap; prefer Supabase Vault
--- (`select vault.create_secret(...)` + `vault.decrypted_secrets`) once available
--- on your plan, and reference the secret instead of the literal key below.
-SELECT cron.schedule(
-  'send-notifications-tick',
-  '*/5 * * * *',
-  $$
-  SELECT net.http_post(
-    url := 'https://<PROJECT_REF>.functions.supabase.co/send-notifications',
-    headers := jsonb_build_object(
-      'Authorization', 'Bearer <SERVICE_ROLE_KEY>',
-      'Content-Type', 'application/json'
-    ),
-    body := '{}'::jsonb
-  );
-  $$
-);
+-- NOTE: this migration deliberately stops here. The cron.schedule() call
+-- below needs the send-notifications Edge Function deployed AND the
+-- service_role key stored in Vault first — do not hardcode the raw key into
+-- a committed migration file. Run this manually (dashboard SQL editor or
+-- psql) once both are ready, replacing <PROJECT_REF>:
+--
+--   select vault.create_secret('<SERVICE_ROLE_KEY>', 'service_role_key');
+--
+--   select cron.schedule(
+--     'send-notifications-tick',
+--     '*/5 * * * *',
+--     $cron$
+--     select net.http_post(
+--       url := 'https://<PROJECT_REF>.functions.supabase.co/send-notifications',
+--       headers := jsonb_build_object(
+--         'Authorization', 'Bearer ' || (
+--           select decrypted_secret from vault.decrypted_secrets
+--           where name = 'service_role_key'
+--         ),
+--         'Content-Type', 'application/json'
+--       ),
+--       body := '{}'::jsonb
+--     );
+--     $cron$
+--   );
