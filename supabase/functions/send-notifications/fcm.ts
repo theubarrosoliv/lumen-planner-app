@@ -69,6 +69,8 @@ export interface PushResult {
   ok: boolean;
   /** Set when the send failed; "UNREGISTERED"/"NOT_FOUND" mean the token should be pruned. */
   errorCode?: string;
+  /** FCM's human-readable error detail, when present — invaluable for debugging (e.g. SENDER_ID_MISMATCH). */
+  errorMessage?: string;
 }
 
 export async function sendPush(
@@ -98,5 +100,9 @@ export async function sendPush(
   );
   if (res.ok) return { ok: true };
   const body = await res.json().catch(() => null);
-  return { ok: false, errorCode: body?.error?.status ?? `HTTP_${res.status}` };
+  return {
+    ok: false,
+    errorCode: body?.error?.status ?? `HTTP_${res.status}`,
+    errorMessage: body?.error?.message,
+  };
 }

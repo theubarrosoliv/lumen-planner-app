@@ -177,13 +177,35 @@ function computeCandidates(data: any, prefs: NotificationPrefs, now: Date): Cand
     }
   }
 
-  // ---- Events: lead time before start-of-day of the event's date ----------
+  // ---- Events: timed events fire relative to their date+time (like tasks);
+  // all-day events keep the old start-of-day / agenda-hour behavior. --------
   if (cats.eventReminder ?? true) {
     for (const ev of data.events ?? []) {
       if (ev.notify === false) continue;
+      const override = leadMinutesFor(ev.notifyLeadValue, ev.notifyLeadUnit);
+      const hasTime = typeof ev.time === "string" && /^\d{2}:\d{2}$/.test(ev.time);
+
+      if (hasTime) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(ev.date)) continue;
+        const [ey, em, ed] = ev.date.split("-").map(Number);
+        const [hh, mm] = ev.time.split(":").map(Number);
+        const due = new Date(ey, em - 1, ed, hh, mm);
+        const leadMinutes = override ?? prefs.taskReminderMinutesBefore;
+        if (isWithinLeadWindow(due, now, leadMinutes)) {
+          out.push({
+            kind: "event_reminder",
+            entityId: ev.id,
+            periodKey: ev.date,
+            title: `Em breve: ${ev.title}`,
+            body: `${fmtDatePt(ev.date)} às ${ev.time}`,
+            link: "/calendario",
+          });
+        }
+        continue;
+      }
+
       const dueDay = startOfDay(ev.date);
       if (!dueDay) continue;
-      const override = leadMinutesFor(ev.notifyLeadValue, ev.notifyLeadUnit);
       if (override !== null) {
         if (isWithinLeadWindow(dueDay, now, override)) {
           out.push({
@@ -402,14 +424,44 @@ function computeCandidates(data: any, prefs: NotificationPrefs, now: Date): Cand
   return out;
 }
 
-Deno.serve(async () => {
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const projectId = Deno.env.get("FIREBASE_PROJECT_ID")!;
-  const clientEmail = Deno.env.get("FIREBASE_CLIENT_EMAIL")!;
-  const privateKey = Deno.env.get("FIREBASE_PRIVATE_KEY")!.replace(/\\n/g, "\n");
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
 
-  const supabase = createClient(supabaseUrl, serviceRoleKey);
+// Wrap the handler so an uncaught throw (e.g. getAccessToken failing on bad
+// FCM service-account secrets) surfaces the actual message in the response
+// body instead of an opaque platform 500 — makes the pipeline debuggable.
+Deno.serve((_req) =>
+  handler().catch((e) =>
+    jsonResponse({ error: e instanceof Error ? e.message : String(e), stack: e instanceof Error ? e.stack : undefined }, 500),
+  ),
+);
+
+async function handler(): Promise<Response> {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const projectId = Deno.env.get("FIREBASE_PROJECT_ID");
+  const clientEmail = Deno.env.get("FIREBASE_CLIENT_EMAIL");
+  const rawPrivateKey = Deno.env.get("FIREBASE_PRIVATE_KEY");
+
+  const missing = [
+    ["SUPABASE_URL", supabaseUrl],
+    ["SUPABASE_SERVICE_ROLE_KEY", serviceRoleKey],
+    ["FIREBASE_PROJECT_ID", projectId],
+    ["FIREBASE_CLIENT_EMAIL", clientEmail],
+    ["FIREBASE_PRIVATE_KEY", rawPrivateKey],
+  ]
+    .filter(([, v]) => !v)
+    .map(([k]) => k);
+  if (missing.length > 0) {
+    return jsonResponse({ error: `Secrets ausentes: ${missing.join(", ")}` }, 500);
+  }
+  const privateKey = rawPrivateKey!.replace(/\\n/g, "\n");
+
+  const supabase = createClient(supabaseUrl!, serviceRoleKey!);
 
   const [{ data: rows, error: rowsError }, { data: tokenRows, error: tokensError }] =
     await Promise.all([
@@ -418,10 +470,7 @@ Deno.serve(async () => {
     ]);
 
   if (rowsError || tokensError) {
-    return new Response(
-      JSON.stringify({ error: (rowsError ?? tokensError)?.message }),
-      { status: 500 },
-    );
+    return jsonResponse({ error: (rowsError ?? tokensError)?.message }, 500);
   }
 
   const tokensByUser = new Map<string, { id: string; token: string }[]>();
@@ -434,6 +483,7 @@ Deno.serve(async () => {
   let sent = 0;
   let skipped = 0;
   const tokensToRemove: string[] = [];
+  const sendErrors: string[] = [];
   let accessToken: string | null = null;
 
   for (const row of rows ?? []) {
@@ -449,26 +499,47 @@ Deno.serve(async () => {
     if (candidates.length === 0) continue;
 
     for (const c of candidates) {
-      const { error: dedupeError } = await supabase
-        .from("notification_log")
-        .insert({ user_id: row.user_id, kind: c.kind, entity_id: c.entityId, period_key: c.periodKey });
+      // Mint the FCM token BEFORE claiming the dedup row: if the service
+      // account is misconfigured this throws (→ 500, visible in logs) without
+      // leaving behind an "already sent" row that would permanently suppress
+      // this notification.
+      accessToken ??= await getAccessToken({ clientEmail, privateKey, projectId });
+
+      const dedupeRow = {
+        user_id: row.user_id,
+        kind: c.kind,
+        entity_id: c.entityId,
+        period_key: c.periodKey,
+      };
+      const { error: dedupeError } = await supabase.from("notification_log").insert(dedupeRow);
       if (dedupeError) {
         // Unique violation => already sent this period; anything else, skip and move on.
         skipped++;
         continue;
       }
 
-      accessToken ??= await getAccessToken({ clientEmail, privateKey, projectId });
+      let delivered = false;
       for (const t of tokens) {
         const result = await sendPush(accessToken, projectId, t.token, {
           title: c.title,
           body: c.body,
           link: c.link,
         });
-        if (result.ok) sent++;
-        else if (result.errorCode === "UNREGISTERED" || result.errorCode === "NOT_FOUND") {
+        if (result.ok) {
+          sent++;
+          delivered = true;
+        } else if (result.errorCode === "UNREGISTERED" || result.errorCode === "NOT_FOUND") {
           tokensToRemove.push(t.id);
+        } else if (sendErrors.length < 5) {
+          sendErrors.push(`${result.errorCode}${result.errorMessage ? ": " + result.errorMessage : ""}`);
         }
+      }
+
+      // Nothing was actually delivered (e.g. transient FCM failure) — release
+      // the dedup claim so the next tick retries instead of swallowing it.
+      if (!delivered) {
+        await supabase.from("notification_log").delete().match(dedupeRow);
+        skipped++;
       }
     }
   }
@@ -477,7 +548,5 @@ Deno.serve(async () => {
     await supabase.from("fcm_tokens").delete().in("id", tokensToRemove);
   }
 
-  return new Response(JSON.stringify({ sent, skipped, pruned: tokensToRemove.length }), {
-    headers: { "Content-Type": "application/json" },
-  });
-});
+  return jsonResponse({ sent, skipped, pruned: tokensToRemove.length, sendErrors });
+}
