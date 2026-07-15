@@ -28,6 +28,26 @@ export type TokenStatus = "idle" | "registering" | "saved" | "error";
  */
 const FCM_SW_SCOPE = "/firebase-cloud-messaging-push-scope";
 
+const DEVICE_ID_KEY = "lumen-device-id";
+
+/**
+ * Stable per-installation identifier, persisted in localStorage. FCM tokens
+ * rotate over time (and did on every SW re-registration during past scope
+ * migrations); without a device-stable key, every rotation inserted a new
+ * fcm_tokens row instead of replacing the old one, so a single phone
+ * accumulated multiple still-valid tokens and got every push N times over.
+ * Deduping the upsert on (user_id, device_id) instead of (user_id, token)
+ * makes a rotated token overwrite its device's row.
+ */
+function getDeviceId(): string {
+  let id = localStorage.getItem(DEVICE_ID_KEY);
+  if (!id) {
+    id = crypto.randomUUID();
+    localStorage.setItem(DEVICE_ID_KEY, id);
+  }
+  return id;
+}
+
 function computeBaseStatus(): PushStatus | null {
   if (isEmbeddedPreview() || !isMobileDevice()) return "unsupported";
   if (isIOS() && !isStandalonePWA()) return "ios-needs-install";
@@ -125,12 +145,13 @@ export function usePushNotifications() {
       const { error } = await supabase.from("fcm_tokens").upsert(
         {
           user_id: userId,
+          device_id: getDeviceId(),
           token,
           platform: isIOS() ? "ios" : "android",
           user_agent: navigator.userAgent,
           last_seen_at: new Date().toISOString(),
         },
-        { onConflict: "user_id,token" },
+        { onConflict: "user_id,device_id" },
       );
       if (error) throw error;
 

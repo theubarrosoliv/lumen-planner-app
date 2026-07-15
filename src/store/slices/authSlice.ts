@@ -9,6 +9,8 @@ export interface AuthSlice {
   logout: () => Promise<void>;
   currentUser: () => User | null;
   verifySession: () => boolean;
+  requestPasswordReset: (email: string) => Promise<{ ok: boolean; error?: string }>;
+  updatePassword: (password: string) => Promise<{ ok: boolean; error?: string }>;
 
   // internal, wired up by the Supabase auth listener in useAppStore.ts
   _setSession: (userId: string | null, user?: Partial<User>) => void;
@@ -65,6 +67,24 @@ export const createAuthSlice: StateCreator<
     await supabase.auth.signOut();
     set({ currentUserId: null, hydrated: false });
     writeCache({ currentUserId: null, users: get().users, data: get().data });
+  },
+
+  requestPasswordReset: async (email) => {
+    const e = email.trim().toLowerCase();
+    const { error } = await supabase.auth.resetPasswordForEmail(e, {
+      redirectTo: `${window.location.origin}/redefinir-senha`,
+    });
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  },
+
+  updatePassword: async (password) => {
+    if (password.length < 8) {
+      return { ok: false, error: "Sua senha precisa ter pelo menos 8 caracteres." };
+    }
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
   },
 
   _setSession: (userId, user) => {

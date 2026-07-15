@@ -17,6 +17,7 @@ export type Database = {
       fcm_tokens: {
         Row: {
           created_at: string
+          device_id: string
           id: string
           last_seen_at: string
           platform: string | null
@@ -26,6 +27,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          device_id: string
           id?: string
           last_seen_at?: string
           platform?: string | null
@@ -35,6 +37,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          device_id?: string
           id?: string
           last_seen_at?: string
           platform?: string | null
