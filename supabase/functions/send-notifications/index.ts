@@ -424,14 +424,44 @@ function computeCandidates(data: any, prefs: NotificationPrefs, now: Date): Cand
   return out;
 }
 
-Deno.serve(async () => {
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const projectId = Deno.env.get("FIREBASE_PROJECT_ID")!;
-  const clientEmail = Deno.env.get("FIREBASE_CLIENT_EMAIL")!;
-  const privateKey = Deno.env.get("FIREBASE_PRIVATE_KEY")!.replace(/\\n/g, "\n");
+function jsonResponse(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
 
-  const supabase = createClient(supabaseUrl, serviceRoleKey);
+// Wrap the handler so an uncaught throw (e.g. getAccessToken failing on bad
+// FCM service-account secrets) surfaces the actual message in the response
+// body instead of an opaque platform 500 — makes the pipeline debuggable.
+Deno.serve((_req) =>
+  handler().catch((e) =>
+    jsonResponse({ error: e instanceof Error ? e.message : String(e), stack: e instanceof Error ? e.stack : undefined }, 500),
+  ),
+);
+
+async function handler(): Promise<Response> {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const projectId = Deno.env.get("FIREBASE_PROJECT_ID");
+  const clientEmail = Deno.env.get("FIREBASE_CLIENT_EMAIL");
+  const rawPrivateKey = Deno.env.get("FIREBASE_PRIVATE_KEY");
+
+  const missing = [
+    ["SUPABASE_URL", supabaseUrl],
+    ["SUPABASE_SERVICE_ROLE_KEY", serviceRoleKey],
+    ["FIREBASE_PROJECT_ID", projectId],
+    ["FIREBASE_CLIENT_EMAIL", clientEmail],
+    ["FIREBASE_PRIVATE_KEY", rawPrivateKey],
+  ]
+    .filter(([, v]) => !v)
+    .map(([k]) => k);
+  if (missing.length > 0) {
+    return jsonResponse({ error: `Secrets ausentes: ${missing.join(", ")}` }, 500);
+  }
+  const privateKey = rawPrivateKey!.replace(/\\n/g, "\n");
+
+  const supabase = createClient(supabaseUrl!, serviceRoleKey!);
 
   const [{ data: rows, error: rowsError }, { data: tokenRows, error: tokensError }] =
     await Promise.all([
@@ -440,10 +470,7 @@ Deno.serve(async () => {
     ]);
 
   if (rowsError || tokensError) {
-    return new Response(
-      JSON.stringify({ error: (rowsError ?? tokensError)?.message }),
-      { status: 500 },
-    );
+    return jsonResponse({ error: (rowsError ?? tokensError)?.message }, 500);
   }
 
   const tokensByUser = new Map<string, { id: string; token: string }[]>();
@@ -456,6 +483,7 @@ Deno.serve(async () => {
   let sent = 0;
   let skipped = 0;
   const tokensToRemove: string[] = [];
+  const sendErrors: string[] = [];
   let accessToken: string | null = null;
 
   for (const row of rows ?? []) {
@@ -502,6 +530,8 @@ Deno.serve(async () => {
           delivered = true;
         } else if (result.errorCode === "UNREGISTERED" || result.errorCode === "NOT_FOUND") {
           tokensToRemove.push(t.id);
+        } else if (sendErrors.length < 5) {
+          sendErrors.push(`${result.errorCode}${result.errorMessage ? ": " + result.errorMessage : ""}`);
         }
       }
 
@@ -518,7 +548,5 @@ Deno.serve(async () => {
     await supabase.from("fcm_tokens").delete().in("id", tokensToRemove);
   }
 
-  return new Response(JSON.stringify({ sent, skipped, pruned: tokensToRemove.length }), {
-    headers: { "Content-Type": "application/json" },
-  });
-});
+  return jsonResponse({ sent, skipped, pruned: tokensToRemove.length, sendErrors });
+}
