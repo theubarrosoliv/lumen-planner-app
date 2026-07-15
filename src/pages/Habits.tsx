@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Flame, Plus, Trash2, Pencil, Check, CalendarDays, Repeat, BarChart3, CalendarPlus } from "lucide-react";
 import { useAppStore, useUserData } from "@/store/useAppStore";
-import { Habit, HabitFrequency } from "@/store/types";
+import { Habit, HabitFrequency, NotifyLeadUnit } from "@/store/types";
 import {
   Dialog,
   DialogContent,
@@ -44,7 +44,8 @@ function HabitDialog({
     name: string;
     frequency: HabitFrequency;
     notify?: boolean;
-    notifyHour?: number;
+    notifyLeadValue?: number;
+    notifyLeadUnit?: NotifyLeadUnit;
   }) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -53,11 +54,12 @@ function HabitDialog({
     (initial?.frequency as HabitFrequency) ?? "daily",
   );
   const [notify, setNotify] = useState(initial?.notify !== false);
-  const [notifyHour, setNotifyHour] = useState<number | undefined>(initial?.notifyHour);
+  const [notifyLeadValue, setNotifyLeadValue] = useState<number | undefined>(initial?.notifyLeadValue);
+  const [notifyLeadUnit, setNotifyLeadUnit] = useState<NotifyLeadUnit>(initial?.notifyLeadUnit ?? "hours");
 
   const submit = () => {
     if (!name.trim()) return toast.error("Dê um nome ao hábito.");
-    onSave({ name: name.trim(), frequency, notify, notifyHour });
+    onSave({ name: name.trim(), frequency, notify, notifyLeadValue, notifyLeadUnit });
     setOpen(false);
     if (!initial) {
       setName("");
@@ -104,9 +106,10 @@ function HabitDialog({
           <NotifyField
             notify={notify}
             onNotifyChange={setNotify}
-            timingKind="hour"
-            timing={notifyHour}
-            onTimingChange={setNotifyHour}
+            leadValue={notifyLeadValue}
+            leadUnit={notifyLeadUnit}
+            onLeadValueChange={setNotifyLeadValue}
+            onLeadUnitChange={setNotifyLeadUnit}
           />
         </div>
         <DialogFooter>
@@ -138,7 +141,7 @@ export default function Habits() {
         action={
           <HabitDialog
             title="Novo hábito"
-            onSave={(v) => addHabit(v.name, v.frequency, v.notify, v.notifyHour)}
+            onSave={(v) => addHabit(v.name, v.frequency, v.notify, v.notifyLeadValue, v.notifyLeadUnit)}
             trigger={
               <Button className="bg-gradient-primary shadow-elegant">
                 <Plus className="mr-1 h-4 w-4" /> Novo hábito

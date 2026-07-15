@@ -18,7 +18,7 @@ import { NotifyField } from "@/components/NotifyField";
 import { useCustomOptions } from "@/hooks/use-custom-options";
 import { useAppStore, useUserData } from "@/store/useAppStore";
 import { toast } from "sonner";
-import { Goal, Milestone } from "@/store/types";
+import { Goal, Milestone, NotifyLeadUnit } from "@/store/types";
 import { GoalsCharts } from "@/components/DashboardCharts";
 
 const CATEGORIES = ["Carreira", "Saúde", "Aprendizado", "Financeiro", "Pessoal"];
@@ -47,7 +47,8 @@ function GoalDialog({
     category: string;
     deadline: string;
     notify?: boolean;
-    notifyDaysBefore?: number;
+    notifyLeadValue?: number;
+    notifyLeadUnit?: NotifyLeadUnit;
   }) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -55,9 +56,8 @@ function GoalDialog({
   const [category, setCategory] = useState(initial?.category ?? "Carreira");
   const [deadline, setDeadline] = useState(initial?.deadline === "Sem prazo" ? "" : initial?.deadline ?? "");
   const [notify, setNotify] = useState(initial?.notify !== false);
-  const [notifyDaysBefore, setNotifyDaysBefore] = useState<number | undefined>(
-    initial?.notifyDaysBefore,
-  );
+  const [notifyLeadValue, setNotifyLeadValue] = useState<number | undefined>(initial?.notifyLeadValue);
+  const [notifyLeadUnit, setNotifyLeadUnit] = useState<NotifyLeadUnit>(initial?.notifyLeadUnit ?? "days");
   const {
     options: categoryOptions,
     custom: customCategories,
@@ -68,7 +68,14 @@ function GoalDialog({
 
   const submit = () => {
     if (!name.trim()) return toast.error("Defina o nome da meta.");
-    onSave({ name: name.trim(), category, deadline: deadline || "Sem prazo", notify, notifyDaysBefore });
+    onSave({
+      name: name.trim(),
+      category,
+      deadline: deadline || "Sem prazo",
+      notify,
+      notifyLeadValue,
+      notifyLeadUnit,
+    });
     setOpen(false);
     if (!initial) {
       setName("");
@@ -111,9 +118,10 @@ function GoalDialog({
           <NotifyField
             notify={notify}
             onNotifyChange={setNotify}
-            timingKind="daysBefore"
-            timing={notifyDaysBefore}
-            onTimingChange={setNotifyDaysBefore}
+            leadValue={notifyLeadValue}
+            leadUnit={notifyLeadUnit}
+            onLeadValueChange={setNotifyLeadValue}
+            onLeadUnitChange={setNotifyLeadUnit}
           />
         </div>
         <DialogFooter>
@@ -140,19 +148,25 @@ function MilestoneDialog({
     name: string;
     deadline?: string;
     notify?: boolean;
-    notifyDaysBefore?: number;
+    notifyLeadValue?: number;
+    notifyLeadUnit?: NotifyLeadUnit;
   }) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(initial?.name ?? "");
   const [deadline, setDeadline] = useState(initial?.deadline ?? "");
   const [notify, setNotify] = useState(initial?.notify !== false);
-  const [notifyDaysBefore, setNotifyDaysBefore] = useState<number | undefined>(
-    initial?.notifyDaysBefore,
-  );
+  const [notifyLeadValue, setNotifyLeadValue] = useState<number | undefined>(initial?.notifyLeadValue);
+  const [notifyLeadUnit, setNotifyLeadUnit] = useState<NotifyLeadUnit>(initial?.notifyLeadUnit ?? "days");
   const submit = () => {
     if (!name.trim()) return toast.error("Nome do marco é obrigatório.");
-    onSave({ name: name.trim(), deadline: deadline || undefined, notify, notifyDaysBefore });
+    onSave({
+      name: name.trim(),
+      deadline: deadline || undefined,
+      notify,
+      notifyLeadValue,
+      notifyLeadUnit,
+    });
     setOpen(false);
   };
   return (
@@ -174,9 +188,10 @@ function MilestoneDialog({
           <NotifyField
             notify={notify}
             onNotifyChange={setNotify}
-            timingKind="daysBefore"
-            timing={notifyDaysBefore}
-            onTimingChange={setNotifyDaysBefore}
+            leadValue={notifyLeadValue}
+            leadUnit={notifyLeadUnit}
+            onLeadValueChange={setNotifyLeadValue}
+            onLeadUnitChange={setNotifyLeadUnit}
           />
         </div>
         <DialogFooter>

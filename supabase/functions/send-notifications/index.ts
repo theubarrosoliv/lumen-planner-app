@@ -15,6 +15,15 @@ import { getAccessToken, sendPush } from "./fcm.ts";
 
 const DEFAULT_TIMEZONE = "America/Sao_Paulo";
 
+type NotifyLeadUnit = "minutes" | "hours" | "days" | "weeks";
+
+const LEAD_UNIT_MINUTES: Record<NotifyLeadUnit, number> = {
+  minutes: 1,
+  hours: 60,
+  days: 1440,
+  weeks: 10080,
+};
+
 interface NotificationCategoryPrefs {
   taskReminder: boolean;
   dailyAgenda: boolean;
@@ -82,35 +91,75 @@ function daysUntil(deadline: string, today: Date): number | null {
   return Math.round((target.getTime() - new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime()) / 86_400_000);
 }
 
+/** Midnight (00:00) of a "YYYY-MM-DD" string, or null if not a valid date. */
+function startOfDay(dateStr: string | undefined): Date | null {
+  if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return null;
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(y, m - 1, d, 0, 0, 0);
+}
+
+/** Converts a free-form per-item lead-time override into minutes, or null if unset. */
+function leadMinutesFor(value: unknown, unit: unknown): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  const mult = LEAD_UNIT_MINUTES[(unit as NotifyLeadUnit) ?? "minutes"] ?? 1;
+  return value * mult;
+}
+
+/** True when `dueMoment` is in the future but within `leadMinutes` of `now`. */
+function isWithinLeadWindow(dueMoment: Date, now: Date, leadMinutes: number): boolean {
+  const minutesUntil = (dueMoment.getTime() - now.getTime()) / 60_000;
+  return minutesUntil >= 0 && minutesUntil <= leadMinutes;
+}
+
+/** Start of the NEXT period boundary for a habit — the moment its current period ends. */
+function periodEnd(freq: HabitFrequency, now: Date): Date {
+  if (freq === "weekly") {
+    const isoDay = now.getDay() || 7; // Mon=1..Sun=7
+    const daysUntilNextMonday = 8 - isoDay;
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysUntilNextMonday, 0, 0, 0);
+  }
+  if (freq === "monthly") {
+    return new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0);
+  }
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
+}
+
+function fmtDatePt(dateStr: string): string {
+  const d = startOfDay(dateStr);
+  if (!d) return dateStr;
+  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+}
+
 // deno-lint-ignore no-explicit-any
 function computeCandidates(data: any, prefs: NotificationPrefs, now: Date): Candidate[] {
   const out: Candidate[] = [];
   const cats = prefs.categories;
   const today = dayKey(now);
 
+  // ---- Tasks: lead time before the task's own date+time -------------------
   if (cats.taskReminder) {
     for (const t of data.tasks ?? []) {
       if (t.notify === false) continue;
       if (t.done || !t.time || t.time === "—" || !/^\d{2}:\d{2}$/.test(t.time)) continue;
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(t.date)) continue;
+      const [ty, tm, td] = t.date.split("-").map(Number);
       const [hh, mm] = t.time.split(":").map(Number);
-      const due = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hh, mm);
-      if (t.date !== today) continue;
-      const minutesBefore =
-        typeof t.notifyMinutesBefore === "number" ? t.notifyMinutesBefore : prefs.taskReminderMinutesBefore;
-      const minutesUntil = (due.getTime() - now.getTime()) / 60_000;
-      if (minutesUntil <= minutesBefore && minutesUntil >= 0) {
+      const due = new Date(ty, tm - 1, td, hh, mm);
+      const leadMinutes = leadMinutesFor(t.notifyLeadValue, t.notifyLeadUnit) ?? prefs.taskReminderMinutesBefore;
+      if (isWithinLeadWindow(due, now, leadMinutes)) {
         out.push({
           kind: "task_upcoming",
           entityId: t.id,
           periodKey: t.date,
           title: `Em breve: ${t.title}`,
-          body: `${t.time}${t.tag ? " · " + t.tag : ""}`,
+          body: `${fmtDatePt(t.date)} às ${t.time}${t.tag ? " · " + t.tag : ""}`,
           link: "/agenda",
         });
       }
     }
   }
 
+  // ---- Daily agenda summary: unchanged, fires once at the configured hour -
   if (cats.dailyAgenda && now.getHours() === prefs.dailyAgendaHour) {
     const todays = (data.tasks ?? []).filter((t: any) => t.date === today && !t.done);
     if (todays.length > 0) {
@@ -128,23 +177,38 @@ function computeCandidates(data: any, prefs: NotificationPrefs, now: Date): Cand
     }
   }
 
+  // ---- Events: lead time before start-of-day of the event's date ----------
   if (cats.eventReminder ?? true) {
     for (const ev of data.events ?? []) {
       if (ev.notify === false) continue;
-      if (ev.date !== today) continue;
-      const hour = typeof ev.notifyHour === "number" ? ev.notifyHour : prefs.dailyAgendaHour;
-      if (now.getHours() !== hour) continue;
-      out.push({
-        kind: "event_reminder",
-        entityId: ev.id,
-        periodKey: today,
-        title: `Hoje: ${ev.title}`,
-        body: "Evento marcado para hoje.",
-        link: "/calendario",
-      });
+      const dueDay = startOfDay(ev.date);
+      if (!dueDay) continue;
+      const override = leadMinutesFor(ev.notifyLeadValue, ev.notifyLeadUnit);
+      if (override !== null) {
+        if (isWithinLeadWindow(dueDay, now, override)) {
+          out.push({
+            kind: "event_reminder",
+            entityId: ev.id,
+            periodKey: ev.date,
+            title: `Em breve: ${ev.title}`,
+            body: fmtDatePt(ev.date),
+            link: "/calendario",
+          });
+        }
+      } else if (ev.date === today && now.getHours() === prefs.dailyAgendaHour) {
+        out.push({
+          kind: "event_reminder",
+          entityId: ev.id,
+          periodKey: ev.date,
+          title: `Hoje: ${ev.title}`,
+          body: "Evento marcado para hoje.",
+          link: "/calendario",
+        });
+      }
     }
   }
 
+  // ---- Habits: lead time before the current period's end, or old hour-based
   for (const h of data.habits ?? []) {
     if (h.notify === false) continue;
     const freq: HabitFrequency = h.frequency ?? "daily";
@@ -152,65 +216,113 @@ function computeCandidates(data: any, prefs: NotificationPrefs, now: Date): Cand
     const completed = !!h.completions?.[currentKey];
     if (completed) continue;
 
-    const reminderHour = typeof h.notifyHour === "number" ? h.notifyHour : prefs.habitReminderHour;
-    if (cats.habitReminder && now.getHours() === reminderHour) {
-      out.push({
-        kind: "habit_reminder",
-        entityId: h.id,
-        periodKey: currentKey,
-        title: `Não esqueça: ${h.name}`,
-        body: "Ainda não concluído neste período.",
-        link: "/habitos",
-      });
-    }
+    const override = leadMinutesFor(h.notifyLeadValue, h.notifyLeadUnit);
+    const end = override !== null ? periodEnd(freq, now) : null;
 
-    const streakRiskHour = typeof h.notifyHour === "number" ? h.notifyHour : prefs.habitStreakRiskHour;
-    if (cats.habitStreakRisk && now.getHours() === streakRiskHour) {
-      const streak = streakOf(h, now);
-      if (streak >= 3) {
+    if (cats.habitReminder) {
+      const due = override !== null && end
+        ? isWithinLeadWindow(end, now, override)
+        : now.getHours() === prefs.habitReminderHour;
+      if (due) {
         out.push({
-          kind: "habit_streak_risk",
+          kind: "habit_reminder",
           entityId: h.id,
           periodKey: currentKey,
-          title: `Sua sequência de ${streak} dias está em risco!`,
-          body: `Complete "${h.name}" antes do fim do período.`,
+          title: `Não esqueça: ${h.name}`,
+          body: "Ainda não concluído neste período.",
           link: "/habitos",
         });
       }
     }
+
+    if (cats.habitStreakRisk) {
+      const streak = streakOf(h, now);
+      if (streak >= 3) {
+        const due = override !== null && end
+          ? isWithinLeadWindow(end, now, override)
+          : now.getHours() === prefs.habitStreakRiskHour;
+        if (due) {
+          out.push({
+            kind: "habit_streak_risk",
+            entityId: h.id,
+            periodKey: currentKey,
+            title: `Sua sequência de ${streak} dias está em risco!`,
+            body: `Complete "${h.name}" antes do fim do período.`,
+            link: "/habitos",
+          });
+        }
+      }
+    }
   }
 
-  // A per-item notifyDaysBefore override is a single day, so it's an exact
-  // match (===) rather than the global deadlineLeadDays list membership.
-  const isDeadlineDue = (du: number | null, notifyDaysBefore?: number) =>
-    du !== null && (typeof notifyDaysBefore === "number" ? du === notifyDaysBefore : prefs.deadlineLeadDays.includes(du));
-
+  // ---- Goal/Milestone/Project/ProjectTask deadlines ------------------------
+  // Per-item override: lead time before start-of-day of the deadline (fires
+  // once total, dedup keyed by the deadline date itself). No override: the
+  // original behavior — fires once per threshold in the global
+  // deadlineLeadDays list (e.g. once at 3 days out, again at 1 day out),
+  // dedup keyed by the day-count so both thresholds can each fire once.
   if (cats.goalDeadline) {
     for (const g of data.goals ?? []) {
-      const du = daysUntil(g.deadline, now);
-      if (g.notify !== false && isDeadlineDue(du, g.notifyDaysBefore)) {
-        out.push({
-          kind: "goal_deadline",
-          entityId: g.id,
-          periodKey: `${du}d`,
-          title: `Meta "${g.name}" vence em ${du} dia${du === 1 ? "" : "s"}`,
-          body: `${(g.milestones ?? []).filter((m: any) => m.done).length} de ${(g.milestones ?? []).length} marcos concluídos`,
-          link: "/metas",
-        });
-      }
-      if (cats.milestoneDeadline) {
-        for (const m of g.milestones ?? []) {
-          if (m.notify === false || m.done || !m.deadline) continue;
-          const mdu = daysUntil(m.deadline, now);
-          if (isDeadlineDue(mdu, m.notifyDaysBefore)) {
+      if (g.notify === false) continue;
+      const dueDay = startOfDay(g.deadline);
+      if (dueDay) {
+        const override = leadMinutesFor(g.notifyLeadValue, g.notifyLeadUnit);
+        const progress = `${(g.milestones ?? []).filter((m: any) => m.done).length} de ${(g.milestones ?? []).length} marcos concluídos`;
+        if (override !== null) {
+          if (isWithinLeadWindow(dueDay, now, override)) {
             out.push({
-              kind: "milestone_deadline",
-              entityId: m.id,
-              periodKey: `${mdu}d`,
-              title: `Marco "${m.name}" vence em breve`,
-              body: `Meta: ${g.name}`,
+              kind: "goal_deadline",
+              entityId: g.id,
+              periodKey: g.deadline,
+              title: `Meta "${g.name}" vence em breve`,
+              body: progress,
               link: "/metas",
             });
+          }
+        } else {
+          const du = daysUntil(g.deadline, now);
+          if (du !== null && prefs.deadlineLeadDays.includes(du)) {
+            out.push({
+              kind: "goal_deadline",
+              entityId: g.id,
+              periodKey: `${du}d`,
+              title: `Meta "${g.name}" vence em ${du} dia${du === 1 ? "" : "s"}`,
+              body: progress,
+              link: "/metas",
+            });
+          }
+        }
+      }
+
+      if (cats.milestoneDeadline) {
+        for (const m of g.milestones ?? []) {
+          if (m.notify === false || m.done) continue;
+          const mDueDay = startOfDay(m.deadline);
+          if (!mDueDay) continue;
+          const override = leadMinutesFor(m.notifyLeadValue, m.notifyLeadUnit);
+          if (override !== null) {
+            if (isWithinLeadWindow(mDueDay, now, override)) {
+              out.push({
+                kind: "milestone_deadline",
+                entityId: m.id,
+                periodKey: m.deadline!,
+                title: `Marco "${m.name}" vence em breve`,
+                body: `Meta: ${g.name}`,
+                link: "/metas",
+              });
+            }
+          } else {
+            const mdu = daysUntil(m.deadline!, now);
+            if (mdu !== null && prefs.deadlineLeadDays.includes(mdu)) {
+              out.push({
+                kind: "milestone_deadline",
+                entityId: m.id,
+                periodKey: `${mdu}d`,
+                title: `Marco "${m.name}" vence em breve`,
+                body: `Meta: ${g.name}`,
+                link: "/metas",
+              });
+            }
           }
         }
       }
@@ -220,32 +332,67 @@ function computeCandidates(data: any, prefs: NotificationPrefs, now: Date): Cand
   if (cats.projectDeadline || cats.projectTaskDeadline) {
     for (const p of data.projects ?? []) {
       if (p.status !== "Concluído" && cats.projectDeadline && p.notify !== false) {
-        const du = daysUntil(p.deadline, now);
-        if (isDeadlineDue(du, p.notifyDaysBefore)) {
+        const dueDay = startOfDay(p.deadline);
+        if (dueDay) {
+          const override = leadMinutesFor(p.notifyLeadValue, p.notifyLeadUnit);
           const done = (p.tasks ?? []).filter((t: any) => t.done).length;
-          out.push({
-            kind: "project_deadline",
-            entityId: p.id,
-            periodKey: `${du}d`,
-            title: `Projeto "${p.name}" vence em ${du} dia${du === 1 ? "" : "s"}`,
-            body: `${done}/${(p.tasks ?? []).length} tarefas feitas`,
-            link: "/projetos",
-          });
+          const body = `${done}/${(p.tasks ?? []).length} tarefas feitas`;
+          if (override !== null) {
+            if (isWithinLeadWindow(dueDay, now, override)) {
+              out.push({
+                kind: "project_deadline",
+                entityId: p.id,
+                periodKey: p.deadline,
+                title: `Projeto "${p.name}" vence em breve`,
+                body,
+                link: "/projetos",
+              });
+            }
+          } else {
+            const du = daysUntil(p.deadline, now);
+            if (du !== null && prefs.deadlineLeadDays.includes(du)) {
+              out.push({
+                kind: "project_deadline",
+                entityId: p.id,
+                periodKey: `${du}d`,
+                title: `Projeto "${p.name}" vence em ${du} dia${du === 1 ? "" : "s"}`,
+                body,
+                link: "/projetos",
+              });
+            }
+          }
         }
       }
+
       if (cats.projectTaskDeadline) {
         for (const t of p.tasks ?? []) {
-          if (t.notify === false || t.done || !t.deadline) continue;
-          const tdu = daysUntil(t.deadline, now);
-          if (isDeadlineDue(tdu, t.notifyDaysBefore)) {
-            out.push({
-              kind: "project_task_deadline",
-              entityId: t.id,
-              periodKey: `${tdu}d`,
-              title: `Tarefa "${t.title}" vence em breve`,
-              body: `Projeto: ${p.name}`,
-              link: "/projetos",
-            });
+          if (t.notify === false || t.done) continue;
+          const tDueDay = startOfDay(t.deadline);
+          if (!tDueDay) continue;
+          const override = leadMinutesFor(t.notifyLeadValue, t.notifyLeadUnit);
+          if (override !== null) {
+            if (isWithinLeadWindow(tDueDay, now, override)) {
+              out.push({
+                kind: "project_task_deadline",
+                entityId: t.id,
+                periodKey: t.deadline!,
+                title: `Tarefa "${t.title}" vence em breve`,
+                body: `Projeto: ${p.name}`,
+                link: "/projetos",
+              });
+            }
+          } else {
+            const tdu = daysUntil(t.deadline!, now);
+            if (tdu !== null && prefs.deadlineLeadDays.includes(tdu)) {
+              out.push({
+                kind: "project_task_deadline",
+                entityId: t.id,
+                periodKey: `${tdu}d`,
+                title: `Tarefa "${t.title}" vence em breve`,
+                body: `Projeto: ${p.name}`,
+                link: "/projetos",
+              });
+            }
           }
         }
       }

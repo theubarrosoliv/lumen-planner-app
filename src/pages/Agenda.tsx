@@ -16,7 +16,7 @@ import { CreatableSelect } from "@/components/CreatableSelect";
 import { NotifyField } from "@/components/NotifyField";
 import { useCustomOptions } from "@/hooks/use-custom-options";
 import { useAppStore, useUserData, todayKey, dateKey } from "@/store/useAppStore";
-import { Task } from "@/store/types";
+import { Task, NotifyLeadUnit } from "@/store/types";
 import { toast } from "sonner";
 
 const tagColor: Record<string, string> = {
@@ -44,7 +44,8 @@ function TaskDialog({
     date: string;
     notes?: string;
     notify?: boolean;
-    notifyMinutesBefore?: number;
+    notifyLeadValue?: number;
+    notifyLeadUnit?: NotifyLeadUnit;
   }) => void;
   trigger: React.ReactNode;
   title: string;
@@ -55,10 +56,8 @@ function TaskDialog({
   const [tag, setTag] = useState(initial?.tag ?? "Foco");
   const [date, setDate] = useState(initial?.date ?? todayKey());
   const [notify, setNotify] = useState(initial?.notify !== false);
-  const [notifyMinutesBefore, setNotifyMinutesBefore] = useState<number | undefined>(
-    initial?.notifyMinutesBefore,
-  );
-  const { notificationPrefs } = useUserData();
+  const [notifyLeadValue, setNotifyLeadValue] = useState<number | undefined>(initial?.notifyLeadValue);
+  const [notifyLeadUnit, setNotifyLeadUnit] = useState<NotifyLeadUnit>(initial?.notifyLeadUnit ?? "minutes");
   const {
     options: tagOptions,
     custom: customTags,
@@ -72,7 +71,15 @@ function TaskDialog({
       toast.error("Dê um título à tarefa.");
       return;
     }
-    onSave({ title: text.trim(), time: time || "—", tag, date, notify, notifyMinutesBefore });
+    onSave({
+      title: text.trim(),
+      time: time || "—",
+      tag,
+      date,
+      notify,
+      notifyLeadValue,
+      notifyLeadUnit,
+    });
     setOpen(false);
     if (!initial) {
       setText("");
@@ -117,10 +124,10 @@ function TaskDialog({
           <NotifyField
             notify={notify}
             onNotifyChange={setNotify}
-            timingKind="minutesBefore"
-            timing={notifyMinutesBefore}
-            onTimingChange={setNotifyMinutesBefore}
-            globalDefault={notificationPrefs.taskReminderMinutesBefore}
+            leadValue={notifyLeadValue}
+            leadUnit={notifyLeadUnit}
+            onLeadValueChange={setNotifyLeadValue}
+            onLeadUnitChange={setNotifyLeadUnit}
           />
         </div>
         <DialogFooter>

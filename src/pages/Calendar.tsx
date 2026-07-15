@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { NotifyField } from "@/components/NotifyField";
 import { useAppStore, useUserData, dateKey, todayKey } from "@/store/useAppStore";
-import { CalEvent } from "@/store/types";
+import { CalEvent, NotifyLeadUnit } from "@/store/types";
 import { toast } from "sonner";
 
 const monthNames = [
@@ -42,18 +42,26 @@ function EventDialog({
   title: string;
   initial?: Partial<CalEvent>;
   defaultDate?: string;
-  onSave: (v: { title: string; date: string; color: string; notify?: boolean; notifyHour?: number }) => void;
+  onSave: (v: {
+    title: string;
+    date: string;
+    color: string;
+    notify?: boolean;
+    notifyLeadValue?: number;
+    notifyLeadUnit?: NotifyLeadUnit;
+  }) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(initial?.title ?? "");
   const [color, setColor] = useState(initial?.color ?? "bg-primary");
   const [date, setDate] = useState(initial?.date ?? defaultDate ?? todayKey());
   const [notify, setNotify] = useState(initial?.notify !== false);
-  const [notifyHour, setNotifyHour] = useState<number | undefined>(initial?.notifyHour);
+  const [notifyLeadValue, setNotifyLeadValue] = useState<number | undefined>(initial?.notifyLeadValue);
+  const [notifyLeadUnit, setNotifyLeadUnit] = useState<NotifyLeadUnit>(initial?.notifyLeadUnit ?? "hours");
 
   const submit = () => {
     if (!title.trim()) return toast.error("Defina o título do evento.");
-    onSave({ title: title.trim(), date, color, notify, notifyHour });
+    onSave({ title: title.trim(), date, color, notify, notifyLeadValue, notifyLeadUnit });
     setOpen(false);
     if (!initial) {
       setTitle("");
@@ -95,9 +103,10 @@ function EventDialog({
           <NotifyField
             notify={notify}
             onNotifyChange={setNotify}
-            timingKind="hour"
-            timing={notifyHour}
-            onTimingChange={setNotifyHour}
+            leadValue={notifyLeadValue}
+            leadUnit={notifyLeadUnit}
+            onLeadValueChange={setNotifyLeadValue}
+            onLeadUnitChange={setNotifyLeadUnit}
           />
         </div>
         <DialogFooter>
