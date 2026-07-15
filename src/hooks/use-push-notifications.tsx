@@ -16,6 +16,18 @@ export type PushStatus =
 
 export type TokenStatus = "idle" | "registering" | "saved" | "error";
 
+/**
+ * The Firebase push SW MUST live at its own scope, not the root "/" — the
+ * PWA (Workbox) service worker already owns "/" and re-registers itself every
+ * 60s (autoUpdate + registration.update()). Two workers can't share a scope,
+ * so registering the FCM worker at "/" would let the PWA worker clobber it,
+ * silently killing the push subscription (getToken succeeds, but no
+ * notification ever arrives). This is the exact scope Firebase uses by default
+ * when it self-registers the SW, and it stays under "/" so no
+ * Service-Worker-Allowed header is needed.
+ */
+const FCM_SW_SCOPE = "/firebase-cloud-messaging-push-scope";
+
 function computeBaseStatus(): PushStatus | null {
   if (isEmbeddedPreview() || !isMobileDevice()) return "unsupported";
   if (isIOS() && !isStandalonePWA()) return "ios-needs-install";
@@ -54,7 +66,7 @@ function vapidKeyError(key: string): string | null {
 async function waitForActive(registration: ServiceWorkerRegistration): Promise<void> {
   if (registration.active) return;
   const worker = registration.installing ?? registration.waiting;
-  if (!worker) return;
+  if (!worker || worker.state === "activated") return;
   await new Promise<void>((resolve) => {
     const handleChange = () => {
       if (worker.state === "activated") {
@@ -63,6 +75,14 @@ async function waitForActive(registration: ServiceWorkerRegistration): Promise<v
       }
     };
     worker.addEventListener("statechange", handleChange);
+    // The worker may have reached "activated" between the check above and
+    // attaching the listener — statechange would then never fire again and
+    // this promise would hang forever, leaving tokenStatus stuck on
+    // "registering". Re-check once synchronously to close that race.
+    if (worker.state === "activated") {
+      worker.removeEventListener("statechange", handleChange);
+      resolve();
+    }
   });
 }
 
@@ -91,7 +111,9 @@ export function usePushNotifications() {
       const vapidError = vapidKeyError(firebaseVapidKey);
       if (vapidError) throw new Error(vapidError);
 
-      const registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
+      const registration = await navigator.serviceWorker.register("/firebase-messaging-sw.js", {
+        scope: FCM_SW_SCOPE,
+      });
       await waitForActive(registration);
 
       const token = await getToken(messaging, {
