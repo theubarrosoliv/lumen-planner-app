@@ -3,8 +3,11 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { BellRing, Smartphone, Download } from "lucide-react";
+import { toast } from "sonner";
 import { usePushNotifications } from "@/hooks/use-push-notifications";
+import { notifyLocal } from "@/lib/localNotify";
 import { useAppStore, useUserData } from "@/store/useAppStore";
 import { NotificationCategoryPrefs } from "@/store/types";
 
@@ -92,6 +95,25 @@ export default function Notifications() {
                 <span className="text-destructive">Falha ao registrar dispositivo: {tokenError}</span>
               )}
             </p>
+          )}
+
+          {status === "granted" && prefs.enabled && (
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={async () => {
+                await notifyLocal(
+                  "🔔 Notificação de teste",
+                  "Funcionou! As notificações do Lumen estão ativas neste dispositivo.",
+                );
+                toast.success("Notificação de teste enviada", {
+                  description: "Se não aparecer, verifique as permissões do app no iPhone.",
+                });
+              }}
+            >
+              <BellRing className="mr-2 h-4 w-4" />
+              Enviar notificação de teste
+            </Button>
           )}
 
           {status === "granted" && prefs.enabled && (
