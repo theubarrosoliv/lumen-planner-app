@@ -5,7 +5,24 @@ export interface User {
   createdAt: string;
 }
 
-export interface Task {
+/** Free-form per-item notification lead time: N unit(s) before the item's due moment. */
+export type NotifyLeadUnit = "minutes" | "hours" | "days" | "weeks";
+
+/**
+ * Per-item notification override, shared by every notifiable entity below.
+ * `notify` absent/undefined counts as enabled (opt-out model, so existing
+ * items aren't silently muted when this field ships). `notifyLeadValue`
+ * absent means "use the category's global default" from NotificationPrefs;
+ * when present, it's fully user-chosen (any number, any unit) and replaces
+ * the global default entirely for that item.
+ */
+export interface NotifyOverride {
+  notify?: boolean;
+  notifyLeadValue?: number;
+  notifyLeadUnit?: NotifyLeadUnit;
+}
+
+export interface Task extends NotifyOverride {
   id: string;
   date: string; // YYYY-MM-DD
   time: string; // HH:MM or "—"
@@ -13,15 +30,11 @@ export interface Task {
   tag: string;
   done: boolean;
   notes?: string;
-  /** Per-item notification opt-out; absent/undefined counts as enabled. */
-  notify?: boolean;
-  /** Overrides the global taskReminderMinutesBefore for this task only. */
-  notifyMinutesBefore?: number;
 }
 
 export type HabitFrequency = "daily" | "weekly" | "monthly";
 
-export interface Habit {
+export interface Habit extends NotifyOverride {
   id: string;
   name: string;
   createdAt: string;
@@ -34,68 +47,44 @@ export interface Habit {
    * Past completions are preserved even when frequency changes.
    */
   completions: Record<string, boolean>;
-  /** Per-item notification opt-out; absent/undefined counts as enabled. */
-  notify?: boolean;
-  /** Overrides both global habitReminderHour and habitStreakRiskHour for this habit only. */
-  notifyHour?: number;
 }
 
-export interface Milestone {
+export interface Milestone extends NotifyOverride {
   id: string;
   name: string;
   done: boolean;
   deadline?: string; // YYYY-MM-DD
-  /** Per-item notification opt-out; absent/undefined counts as enabled. */
-  notify?: boolean;
-  /** Overrides the global deadlineLeadDays for this milestone only. */
-  notifyDaysBefore?: number;
 }
 
-export interface Goal {
+export interface Goal extends NotifyOverride {
   id: string;
   name: string;
   category: string;
   deadline: string; // free text or YYYY-MM-DD
   milestones: Milestone[];
-  /** Per-item notification opt-out; absent/undefined counts as enabled. */
-  notify?: boolean;
-  /** Overrides the global deadlineLeadDays for this goal only. */
-  notifyDaysBefore?: number;
 }
 
-export interface ProjectTask {
+export interface ProjectTask extends NotifyOverride {
   id: string;
   title: string;
   done: boolean;
   deadline?: string; // YYYY-MM-DD
-  /** Per-item notification opt-out; absent/undefined counts as enabled. */
-  notify?: boolean;
-  /** Overrides the global deadlineLeadDays for this project task only. */
-  notifyDaysBefore?: number;
 }
 
-export interface Project {
+export interface Project extends NotifyOverride {
   id: string;
   name: string;
   description: string;
   status: "Não Iniciado" | "Planejamento" | "Em andamento" | "Concluído";
   deadline: string;
   tasks: ProjectTask[];
-  /** Per-item notification opt-out; absent/undefined counts as enabled. */
-  notify?: boolean;
-  /** Overrides the global deadlineLeadDays for this project only. */
-  notifyDaysBefore?: number;
 }
 
-export interface CalEvent {
+export interface CalEvent extends NotifyOverride {
   id: string;
   date: string; // YYYY-MM-DD
   title: string;
   color: string; // bg-* class
-  /** Per-item notification opt-out; absent/undefined counts as enabled. */
-  notify?: boolean;
-  /** Overrides the global dailyAgendaHour for this event's day-of reminder only. */
-  notifyHour?: number;
 }
 
 export interface MindNode {
@@ -138,15 +127,15 @@ export interface NotificationPrefs {
   /** IANA timezone name, e.g. "America/Sao_Paulo". Captured client-side on first use. */
   timezone?: string;
   categories: NotificationCategoryPrefs;
-  /** Minutes before a Task's scheduled time to send the "compromisso próximo" reminder. */
+  /** Default minutes-before for tasks without their own per-item override. */
   taskReminderMinutesBefore: number;
   /** Local hour (0-23) for the daily agenda summary. */
   dailyAgendaHour: number;
-  /** Local hour (0-23) for the pending-habit reminder. */
+  /** Local hour (0-23) for the pending-habit reminder (habits without their own override). */
   habitReminderHour: number;
-  /** Local hour (0-23) for the "streak at risk" late-day nudge. */
+  /** Local hour (0-23) for the "streak at risk" late-day nudge (habits without their own override). */
   habitStreakRiskHour: number;
-  /** Days-before-deadline thresholds for goal/milestone/project/project-task reminders. */
+  /** Days-before-deadline thresholds for goal/milestone/project/project-task reminders without their own override. */
   deadlineLeadDays: number[];
 }
 

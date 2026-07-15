@@ -15,7 +15,7 @@ import {
 import { NotifyField } from "@/components/NotifyField";
 import { useAppStore, useUserData } from "@/store/useAppStore";
 import { toast } from "sonner";
-import { Project, ProjectTask } from "@/store/types";
+import { Project, ProjectTask, NotifyLeadUnit } from "@/store/types";
 import { ProjectsCharts } from "@/components/DashboardCharts";
 
 const STATUS_STYLES: Record<Project["status"], string> = {
@@ -49,7 +49,8 @@ function ProjectDialog({
     deadline: string;
     status: Project["status"];
     notify?: boolean;
-    notifyDaysBefore?: number;
+    notifyLeadValue?: number;
+    notifyLeadUnit?: NotifyLeadUnit;
   }) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -58,9 +59,8 @@ function ProjectDialog({
   const [deadline, setDeadline] = useState(initial?.deadline && initial.deadline !== "—" ? initial.deadline : "");
   const [status, setStatus] = useState<Project["status"]>(initial?.status ?? "Não Iniciado");
   const [notify, setNotify] = useState(initial?.notify !== false);
-  const [notifyDaysBefore, setNotifyDaysBefore] = useState<number | undefined>(
-    initial?.notifyDaysBefore,
-  );
+  const [notifyLeadValue, setNotifyLeadValue] = useState<number | undefined>(initial?.notifyLeadValue);
+  const [notifyLeadUnit, setNotifyLeadUnit] = useState<NotifyLeadUnit>(initial?.notifyLeadUnit ?? "days");
 
   const submit = () => {
     if (!name.trim()) return toast.error("Nome do projeto é obrigatório.");
@@ -70,7 +70,8 @@ function ProjectDialog({
       deadline: deadline || "—",
       status,
       notify,
-      notifyDaysBefore,
+      notifyLeadValue,
+      notifyLeadUnit,
     });
     setOpen(false);
     if (!initial) {
@@ -119,9 +120,10 @@ function ProjectDialog({
           <NotifyField
             notify={notify}
             onNotifyChange={setNotify}
-            timingKind="daysBefore"
-            timing={notifyDaysBefore}
-            onTimingChange={setNotifyDaysBefore}
+            leadValue={notifyLeadValue}
+            leadUnit={notifyLeadUnit}
+            onLeadValueChange={setNotifyLeadValue}
+            onLeadUnitChange={setNotifyLeadUnit}
           />
         </div>
         <DialogFooter>
@@ -148,19 +150,25 @@ function ProjectTaskDialog({
     title: string;
     deadline?: string;
     notify?: boolean;
-    notifyDaysBefore?: number;
+    notifyLeadValue?: number;
+    notifyLeadUnit?: NotifyLeadUnit;
   }) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(initial?.title ?? "");
   const [deadline, setDeadline] = useState(initial?.deadline ?? "");
   const [notify, setNotify] = useState(initial?.notify !== false);
-  const [notifyDaysBefore, setNotifyDaysBefore] = useState<number | undefined>(
-    initial?.notifyDaysBefore,
-  );
+  const [notifyLeadValue, setNotifyLeadValue] = useState<number | undefined>(initial?.notifyLeadValue);
+  const [notifyLeadUnit, setNotifyLeadUnit] = useState<NotifyLeadUnit>(initial?.notifyLeadUnit ?? "days");
   const submit = () => {
     if (!title.trim()) return toast.error("Defina um título.");
-    onSave({ title: title.trim(), deadline: deadline || undefined, notify, notifyDaysBefore });
+    onSave({
+      title: title.trim(),
+      deadline: deadline || undefined,
+      notify,
+      notifyLeadValue,
+      notifyLeadUnit,
+    });
     setOpen(false);
   };
   return (
@@ -182,9 +190,10 @@ function ProjectTaskDialog({
           <NotifyField
             notify={notify}
             onNotifyChange={setNotify}
-            timingKind="daysBefore"
-            timing={notifyDaysBefore}
-            onTimingChange={setNotifyDaysBefore}
+            leadValue={notifyLeadValue}
+            leadUnit={notifyLeadUnit}
+            onLeadValueChange={setNotifyLeadValue}
+            onLeadUnitChange={setNotifyLeadUnit}
           />
         </div>
         <DialogFooter>

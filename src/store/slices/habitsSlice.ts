@@ -1,12 +1,18 @@
 import { StateCreator } from "zustand";
-import { Habit, HabitFrequency } from "../types";
+import { Habit, HabitFrequency, NotifyLeadUnit } from "../types";
 import { CoreState, mutate, uid } from "../core";
 
 export interface HabitsSlice {
-  addHabit: (name: string, frequency?: HabitFrequency, notify?: boolean, notifyHour?: number) => void;
+  addHabit: (
+    name: string,
+    frequency?: HabitFrequency,
+    notify?: boolean,
+    notifyLeadValue?: number,
+    notifyLeadUnit?: NotifyLeadUnit,
+  ) => void;
   updateHabit: (
     id: string,
-    patch: Partial<Pick<Habit, "name" | "frequency" | "notify" | "notifyHour">>,
+    patch: Partial<Pick<Habit, "name" | "frequency" | "notify" | "notifyLeadValue" | "notifyLeadUnit">>,
   ) => void;
   removeHabit: (id: string) => void;
   toggleHabitPeriod: (id: string, key: string) => void;
@@ -16,7 +22,13 @@ export const createHabitsSlice = (
   persist: <T extends unknown[]>(fn: (...a: T) => void) => (...a: T) => void,
 ): StateCreator<CoreState & HabitsSlice, [], [], HabitsSlice> => (set) => ({
   addHabit: persist(
-    (name: string, frequency: HabitFrequency = "daily", notify?: boolean, notifyHour?: number) =>
+    (
+      name: string,
+      frequency: HabitFrequency = "daily",
+      notify?: boolean,
+      notifyLeadValue?: number,
+      notifyLeadUnit?: NotifyLeadUnit,
+    ) =>
       set((s) =>
         mutate(s, (d) => ({
           ...d,
@@ -28,7 +40,8 @@ export const createHabitsSlice = (
               createdAt: new Date().toISOString(),
               frequency,
               notify,
-              notifyHour,
+              notifyLeadValue,
+              notifyLeadUnit,
               completions: {},
             },
           ],
@@ -36,7 +49,10 @@ export const createHabitsSlice = (
       ),
   ),
   updateHabit: persist(
-    (id: string, patch: Partial<Pick<Habit, "name" | "frequency" | "notify" | "notifyHour">>) =>
+    (
+      id: string,
+      patch: Partial<Pick<Habit, "name" | "frequency" | "notify" | "notifyLeadValue" | "notifyLeadUnit">>,
+    ) =>
       set((s) =>
         mutate(s, (d) => ({
           ...d,
