@@ -45,6 +45,7 @@ function EventDialog({
   onSave: (v: {
     title: string;
     date: string;
+    time?: string;
     color: string;
     notify?: boolean;
     notifyLeadValue?: number;
@@ -55,16 +56,26 @@ function EventDialog({
   const [title, setTitle] = useState(initial?.title ?? "");
   const [color, setColor] = useState(initial?.color ?? "bg-primary");
   const [date, setDate] = useState(initial?.date ?? defaultDate ?? todayKey());
+  const [time, setTime] = useState(initial?.time ?? "");
   const [notify, setNotify] = useState(initial?.notify !== false);
   const [notifyLeadValue, setNotifyLeadValue] = useState<number | undefined>(initial?.notifyLeadValue);
   const [notifyLeadUnit, setNotifyLeadUnit] = useState<NotifyLeadUnit>(initial?.notifyLeadUnit ?? "hours");
 
   const submit = () => {
     if (!title.trim()) return toast.error("Defina o título do evento.");
-    onSave({ title: title.trim(), date, color, notify, notifyLeadValue, notifyLeadUnit });
+    onSave({
+      title: title.trim(),
+      date,
+      time: time || undefined,
+      color,
+      notify,
+      notifyLeadValue,
+      notifyLeadUnit,
+    });
     setOpen(false);
     if (!initial) {
       setTitle("");
+      setTime("");
     }
   };
 
@@ -80,9 +91,17 @@ function EventDialog({
             <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Título</Label>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
           </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Data</Label>
-            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Data</Label>
+              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                Horário <span className="normal-case tracking-normal">(opcional)</span>
+              </Label>
+              <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+            </div>
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Cor</Label>
@@ -275,6 +294,9 @@ export default function CalendarPage() {
                     className="group flex items-center gap-2 rounded-lg border border-border bg-secondary/40 px-3 py-2 text-sm"
                   >
                     <span className={`h-2 w-2 shrink-0 rounded-full ${e.color}`} />
+                    {e.time && (
+                      <span className="text-mono shrink-0 text-xs text-muted-foreground">{e.time}</span>
+                    )}
                     <span className="flex-1 truncate">{e.title}</span>
                     <EventDialog
                       title="Editar evento"

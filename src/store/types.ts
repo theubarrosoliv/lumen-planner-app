@@ -83,6 +83,7 @@ export interface Project extends NotifyOverride {
 export interface CalEvent extends NotifyOverride {
   id: string;
   date: string; // YYYY-MM-DD
+  time?: string; // HH:MM — optional; when set, the event (and its reminder) is anchored to this moment
   title: string;
   color: string; // bg-* class
 }

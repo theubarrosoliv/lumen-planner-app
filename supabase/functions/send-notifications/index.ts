@@ -177,13 +177,35 @@ function computeCandidates(data: any, prefs: NotificationPrefs, now: Date): Cand
     }
   }
 
-  // ---- Events: lead time before start-of-day of the event's date ----------
+  // ---- Events: timed events fire relative to their date+time (like tasks);
+  // all-day events keep the old start-of-day / agenda-hour behavior. --------
   if (cats.eventReminder ?? true) {
     for (const ev of data.events ?? []) {
       if (ev.notify === false) continue;
+      const override = leadMinutesFor(ev.notifyLeadValue, ev.notifyLeadUnit);
+      const hasTime = typeof ev.time === "string" && /^\d{2}:\d{2}$/.test(ev.time);
+
+      if (hasTime) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(ev.date)) continue;
+        const [ey, em, ed] = ev.date.split("-").map(Number);
+        const [hh, mm] = ev.time.split(":").map(Number);
+        const due = new Date(ey, em - 1, ed, hh, mm);
+        const leadMinutes = override ?? prefs.taskReminderMinutesBefore;
+        if (isWithinLeadWindow(due, now, leadMinutes)) {
+          out.push({
+            kind: "event_reminder",
+            entityId: ev.id,
+            periodKey: ev.date,
+            title: `Em breve: ${ev.title}`,
+            body: `${fmtDatePt(ev.date)} às ${ev.time}`,
+            link: "/calendario",
+          });
+        }
+        continue;
+      }
+
       const dueDay = startOfDay(ev.date);
       if (!dueDay) continue;
-      const override = leadMinutesFor(ev.notifyLeadValue, ev.notifyLeadUnit);
       if (override !== null) {
         if (isWithinLeadWindow(dueDay, now, override)) {
           out.push({
@@ -449,26 +471,45 @@ Deno.serve(async () => {
     if (candidates.length === 0) continue;
 
     for (const c of candidates) {
-      const { error: dedupeError } = await supabase
-        .from("notification_log")
-        .insert({ user_id: row.user_id, kind: c.kind, entity_id: c.entityId, period_key: c.periodKey });
+      // Mint the FCM token BEFORE claiming the dedup row: if the service
+      // account is misconfigured this throws (→ 500, visible in logs) without
+      // leaving behind an "already sent" row that would permanently suppress
+      // this notification.
+      accessToken ??= await getAccessToken({ clientEmail, privateKey, projectId });
+
+      const dedupeRow = {
+        user_id: row.user_id,
+        kind: c.kind,
+        entity_id: c.entityId,
+        period_key: c.periodKey,
+      };
+      const { error: dedupeError } = await supabase.from("notification_log").insert(dedupeRow);
       if (dedupeError) {
         // Unique violation => already sent this period; anything else, skip and move on.
         skipped++;
         continue;
       }
 
-      accessToken ??= await getAccessToken({ clientEmail, privateKey, projectId });
+      let delivered = false;
       for (const t of tokens) {
         const result = await sendPush(accessToken, projectId, t.token, {
           title: c.title,
           body: c.body,
           link: c.link,
         });
-        if (result.ok) sent++;
-        else if (result.errorCode === "UNREGISTERED" || result.errorCode === "NOT_FOUND") {
+        if (result.ok) {
+          sent++;
+          delivered = true;
+        } else if (result.errorCode === "UNREGISTERED" || result.errorCode === "NOT_FOUND") {
           tokensToRemove.push(t.id);
         }
+      }
+
+      // Nothing was actually delivered (e.g. transient FCM failure) — release
+      // the dedup claim so the next tick retries instead of swallowing it.
+      if (!delivered) {
+        await supabase.from("notification_log").delete().match(dedupeRow);
+        skipped++;
       }
     }
   }
