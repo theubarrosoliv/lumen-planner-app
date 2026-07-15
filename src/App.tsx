@@ -8,6 +8,7 @@ import AppLayout from "@/components/AppLayout";
 import AuthGuard from "@/components/AuthGuard";
 import Index from "./pages/Index.tsx";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import Agenda from "./pages/Agenda";
 import CalendarPage from "./pages/Calendar";
 import Habits from "./pages/Habits";
@@ -36,6 +37,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/redefinir-senha" element={<ResetPassword />} />
             <Route path="/agenda" element={wrap(<Agenda />)} />
             <Route path="/calendario" element={wrap(<CalendarPage />)} />
             <Route path="/habitos" element={wrap(<Habits />)} />

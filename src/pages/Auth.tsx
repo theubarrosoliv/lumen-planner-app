@@ -12,7 +12,7 @@ import {
   ALLOWED_PROVIDERS_MESSAGE,
 } from "@/lib/emailValidation";
 
-type Mode = "login" | "signup";
+type Mode = "login" | "signup" | "forgot";
 
 export default function Auth() {
   const navigate = useNavigate();
@@ -20,16 +20,35 @@ export default function Auth() {
   const userId = useAppStore((s) => s.currentUserId);
   const signup = useAppStore((s) => s.signup);
   const login = useAppStore((s) => s.login);
+  const requestPasswordReset = useAppStore((s) => s.requestPasswordReset);
 
   const [mode, setMode] = useState<Mode>("login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
 
   if (userId) {
     return <Navigate to={location.state?.from ?? "/"} replace />;
   }
+
+  const submitForgot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const normalizedEmail = normalizeEmail(email);
+    if (!isAllowedEmailProvider(normalizedEmail)) {
+      toast.error(ALLOWED_PROVIDERS_MESSAGE);
+      return;
+    }
+    setBusy(true);
+    const res = await requestPasswordReset(normalizedEmail);
+    setBusy(false);
+    if (!res.ok) {
+      toast.error(res.error ?? "Algo deu errado");
+      return;
+    }
+    setResetSent(true);
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,89 +113,164 @@ export default function Auth() {
         {/* Form */}
         <div className="w-full md:max-w-md">
           <div className="rounded-2xl border border-border bg-gradient-card p-8 shadow-elegant">
-            <div className="mb-6 flex items-center gap-1 rounded-lg border border-border bg-secondary/40 p-1">
-              <button
-                type="button"
-                onClick={() => setMode("login")}
-                className={`flex-1 rounded-md px-3 py-1.5 text-xs uppercase tracking-[0.2em] transition-all ${
-                  mode === "login"
-                    ? "bg-gradient-primary text-primary-foreground shadow-soft"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Entrar
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode("signup")}
-                className={`flex-1 rounded-md px-3 py-1.5 text-xs uppercase tracking-[0.2em] transition-all ${
-                  mode === "signup"
-                    ? "bg-gradient-primary text-primary-foreground shadow-soft"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Criar conta
-              </button>
-            </div>
+            {mode !== "forgot" && (
+              <div className="mb-6 flex items-center gap-1 rounded-lg border border-border bg-secondary/40 p-1">
+                <button
+                  type="button"
+                  onClick={() => setMode("login")}
+                  className={`flex-1 rounded-md px-3 py-1.5 text-xs uppercase tracking-[0.2em] transition-all ${
+                    mode === "login"
+                      ? "bg-gradient-primary text-primary-foreground shadow-soft"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Entrar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode("signup")}
+                  className={`flex-1 rounded-md px-3 py-1.5 text-xs uppercase tracking-[0.2em] transition-all ${
+                    mode === "signup"
+                      ? "bg-gradient-primary text-primary-foreground shadow-soft"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Criar conta
+                </button>
+              </div>
+            )}
 
-            <form onSubmit={submit} className="space-y-4">
-              {mode === "signup" && (
+            {mode === "forgot" ? (
+              resetSent ? (
+                <div className="space-y-4 py-2 text-center">
+                  <p className="font-display text-xl">Verifique seu e-mail</p>
+                  <p className="text-sm text-muted-foreground">
+                    Se houver uma conta para <span className="text-foreground">{email}</span>,
+                    enviamos um link para redefinir sua senha.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full"
+                    onClick={() => {
+                      setMode("login");
+                      setResetSent(false);
+                    }}
+                  >
+                    Voltar para o login
+                  </Button>
+                </div>
+              ) : (
+                <form onSubmit={submitForgot} className="space-y-4">
+                  <div>
+                    <p className="font-display text-xl">Redefinir senha</p>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      Informe seu e-mail e enviaremos um link para redefinir sua senha.
+                    </p>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="forgot-email" className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                      E-mail
+                    </Label>
+                    <Input
+                      id="forgot-email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      placeholder="voce@exemplo.com"
+                      autoComplete="email"
+                      autoFocus
+                      required
+                    />
+                  </div>
+                  <Button
+                    type="submit"
+                    disabled={busy}
+                    className="w-full bg-gradient-primary shadow-elegant transition-transform hover:scale-[1.01]"
+                  >
+                    {busy ? "Aguarde…" : "Enviar link de redefinição"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full"
+                    onClick={() => setMode("login")}
+                  >
+                    Voltar para o login
+                  </Button>
+                </form>
+              )
+            ) : (
+              <form onSubmit={submit} className="space-y-4">
+                {mode === "signup" && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="name" className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                      Nome
+                    </Label>
+                    <Input
+                      id="name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Como podemos te chamar?"
+                      autoComplete="name"
+                      required
+                    />
+                  </div>
+                )}
                 <div className="space-y-1.5">
-                  <Label htmlFor="name" className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                    Nome
+                  <Label htmlFor="email" className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                    E-mail
                   </Label>
                   <Input
-                    id="name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Como podemos te chamar?"
-                    autoComplete="name"
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="voce@exemplo.com"
+                    autoComplete="email"
                     required
                   />
                 </div>
-              )}
-              <div className="space-y-1.5">
-                <Label htmlFor="email" className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                  E-mail
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="voce@exemplo.com"
-                  autoComplete="email"
-                  required
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="password" className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                  Senha
-                </Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  autoComplete={mode === "signup" ? "new-password" : "current-password"}
-                  required
-                />
-              </div>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="password" className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                      Senha
+                    </Label>
+                    {mode === "login" && (
+                      <button
+                        type="button"
+                        onClick={() => setMode("forgot")}
+                        className="text-[11px] text-muted-foreground underline-offset-2 hover:text-primary-glow hover:underline"
+                      >
+                        Esqueci minha senha
+                      </button>
+                    )}
+                  </div>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    autoComplete={mode === "signup" ? "new-password" : "current-password"}
+                    required
+                  />
+                </div>
 
-              <Button
-                type="submit"
-                disabled={busy}
-                className="w-full bg-gradient-primary shadow-elegant transition-transform hover:scale-[1.01]"
-              >
-                {busy ? "Aguarde…" : mode === "signup" ? "Criar conta" : "Entrar"}
-              </Button>
+                <Button
+                  type="submit"
+                  disabled={busy}
+                  className="w-full bg-gradient-primary shadow-elegant transition-transform hover:scale-[1.01]"
+                >
+                  {busy ? "Aguarde…" : mode === "signup" ? "Criar conta" : "Entrar"}
+                </Button>
 
-              <p className="pt-2 text-center text-[11px] text-muted-foreground">
-                Sua conta e seus dados vivem na nuvem — acesse de qualquer
-                dispositivo com o mesmo e-mail e senha.
-              </p>
-            </form>
+                <p className="pt-2 text-center text-[11px] text-muted-foreground">
+                  Sua conta e seus dados vivem na nuvem — acesse de qualquer
+                  dispositivo com o mesmo e-mail e senha.
+                </p>
+              </form>
+            )}
           </div>
         </div>
       </div>
