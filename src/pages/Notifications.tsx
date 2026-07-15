@@ -75,13 +75,16 @@ export default function Notifications() {
               </div>
             </div>
             <Switch
-              checked={status === "granted"}
+              checked={status === "granted" && prefs.enabled}
               disabled={status === "denied"}
-              onCheckedChange={(checked) => checked && enable()}
+              onCheckedChange={(checked) => {
+                setNotificationPrefs({ enabled: checked });
+                if (checked) enable();
+              }}
             />
           </div>
 
-          {status === "granted" && (
+          {status === "granted" && prefs.enabled && (
             <p className="px-1 text-xs text-muted-foreground">
               {tokenStatus === "registering" && "Registrando este dispositivo…"}
               {tokenStatus === "saved" && "✓ Dispositivo registrado para receber notificações."}
@@ -91,7 +94,7 @@ export default function Notifications() {
             </p>
           )}
 
-          {status === "granted" && (
+          {status === "granted" && prefs.enabled && (
             <>
               <Separator />
               <div className="space-y-3">
