@@ -44,10 +44,13 @@ REVOKE ALL ON public.notification_log FROM anon;
 REVOKE ALL ON public.notification_log FROM authenticated;
 GRANT ALL ON public.notification_log TO service_role;
 
--- Scheduled dispatch: invoke the send-notifications Edge Function every 5
--- minutes. Requires pg_cron + pg_net (enable both under Database > Extensions
--- if this migration fails on either CREATE EXTENSION statement — some
--- Supabase plans require enabling them from the dashboard instead of SQL).
+-- Scheduled dispatch: invoke the send-notifications Edge Function every
+-- minute. Per-minute cadence is required so short lead times (e.g. "avisar 1
+-- minuto antes") actually land — a 5-minute cron would step over any window
+-- narrower than the gap between ticks. Requires pg_cron + pg_net (enable both
+-- under Database > Extensions if this migration fails on either CREATE
+-- EXTENSION statement — some Supabase plans require enabling them from the
+-- dashboard instead of SQL).
 CREATE EXTENSION IF NOT EXISTS pg_cron;
 CREATE EXTENSION IF NOT EXISTS pg_net;
 
@@ -65,7 +68,7 @@ CREATE EXTENSION IF NOT EXISTS pg_net;
 --
 --   select cron.schedule(
 --     'send-notifications-tick',
---     '*/5 * * * *',
+--     '* * * * *',
 --     $cron$
 --     select net.http_post(
 --       url := 'https://<PROJECT_REF>.supabase.co/functions/v1/send-notifications',

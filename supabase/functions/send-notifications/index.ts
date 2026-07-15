@@ -1,7 +1,8 @@
 // Scans every user's data and sends due push notifications via FCM.
 // Invoked on a schedule by pg_cron (see the fcm_push_setup migration) every
-// 5 minutes. Can also be invoked manually to test before trusting the cron —
-// see the plan's verification section.
+// minute — per-minute cadence is required so short lead times (e.g. "1 minuto
+// antes") actually land instead of being stepped over between ticks. Can also
+// be invoked manually to test before trusting the cron.
 //
 // Required secrets (supabase secrets set ...):
 //   FIREBASE_PROJECT_ID    - Firebase project id
@@ -105,10 +106,20 @@ function leadMinutesFor(value: unknown, unit: unknown): number | null {
   return value * mult;
 }
 
-/** True when `dueMoment` is in the future but within `leadMinutes` of `now`. */
+// Small tolerance so a due moment that slips *between* cron ticks still fires
+// once (the run reads `now` a few seconds after the tick, and a tick can be
+// skipped/delayed). Without it, any lead window shorter than the gap between
+// ticks could be stepped over entirely and never notify. Dedup guards repeats.
+const NOTIFY_GRACE_MINUTES = 2;
+
+/**
+ * True when `now` is at/after the notify moment (`dueMoment` - lead) and not
+ * more than the grace past `dueMoment`. Fires at the first tick inside the
+ * window; the notification_log dedup then blocks any later tick in it.
+ */
 function isWithinLeadWindow(dueMoment: Date, now: Date, leadMinutes: number): boolean {
   const minutesUntil = (dueMoment.getTime() - now.getTime()) / 60_000;
-  return minutesUntil >= 0 && minutesUntil <= leadMinutes;
+  return minutesUntil >= -NOTIFY_GRACE_MINUTES && minutesUntil <= leadMinutes;
 }
 
 /** Start of the NEXT period boundary for a habit — the moment its current period ends. */
