@@ -90,10 +90,19 @@ export async function sendPush(
       body: JSON.stringify({
         message: {
           token,
-          notification: { title: notification.title, body: notification.body },
-          webpush: notification.link
-            ? { fcm_options: { link: notification.link } }
-            : undefined,
+          // Data-only payload, deliberately WITHOUT a top-level "notification"
+          // field. When a message has "notification", the Firebase Web SDK's
+          // compat service worker auto-displays it AND still invokes
+          // onBackgroundMessage — which also calls showNotification() in
+          // public/firebase-messaging-sw.js — so every push showed twice.
+          // Data-only messages only ever reach onBackgroundMessage, so it's
+          // the single place a notification gets shown. FCM data payload
+          // values must all be strings.
+          data: {
+            title: notification.title,
+            body: notification.body,
+            link: notification.link ?? "/",
+          },
         },
       }),
     },
