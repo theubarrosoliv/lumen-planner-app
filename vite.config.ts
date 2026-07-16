@@ -48,6 +48,10 @@ export default defineConfig(({ mode }) => ({
             options: {
               cacheName: "lumen-html",
               networkTimeoutSeconds: 3,
+              // Only pin actual 200s into the cache — otherwise a transient
+              // 404/500 (e.g. mid-deploy CDN propagation) gets cached and
+              // served forever on that route, even after the site recovers.
+              cacheableResponse: { statuses: [200] },
             },
           },
           {
