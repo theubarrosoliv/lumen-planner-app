@@ -22,13 +22,17 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
+// The server sends a data-only message (no top-level "notification" field)
+// specifically so this is the ONLY place a notification gets shown — a
+// message with "notification" makes the Firebase compat SW auto-display it
+// in addition to calling this handler, doubling every push. Read title/body/
+// link from payload.data (all FCM data values arrive as strings).
 messaging.onBackgroundMessage((payload) => {
-  const { title, body } = payload.notification ?? {};
-  const link = payload.fcm_options?.link ?? payload.data?.link ?? "/";
+  const { title, body, link } = payload.data ?? {};
   self.registration.showNotification(title ?? "Lumen", {
     body: body ?? "",
     icon: "/icon-192.png",
-    data: { link },
+    data: { link: link ?? "/" },
   });
 });
 
