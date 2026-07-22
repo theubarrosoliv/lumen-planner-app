@@ -148,6 +148,8 @@ export default function Notifications() {
                   </Label>
                   <Input
                     type="number"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     min={1}
                     value={prefs.taskReminderMinutesBefore}
                     onChange={(e) =>
@@ -161,6 +163,8 @@ export default function Notifications() {
                   </Label>
                   <Input
                     type="number"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     min={0}
                     max={23}
                     value={prefs.dailyAgendaHour}
@@ -175,6 +179,8 @@ export default function Notifications() {
                   </Label>
                   <Input
                     type="number"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     min={0}
                     max={23}
                     value={prefs.habitReminderHour}
