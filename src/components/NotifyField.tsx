@@ -52,6 +52,11 @@ export function NotifyField({
           <div className="flex gap-2">
             <Input
               type="number"
+              // inputMode="numeric" forces the digit-only keypad on iOS/Android
+              // instead of the full text keyboard (this field only takes whole
+              // numbers). pattern helps older iOS honor it.
+              inputMode="numeric"
+              pattern="[0-9]*"
               min={0}
               placeholder="Personalizado"
               value={leadValue ?? ""}
