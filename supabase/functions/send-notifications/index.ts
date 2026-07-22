@@ -502,8 +502,13 @@ async function handler(): Promise<Response> {
     const prefs: NotificationPrefs | undefined = data.notificationPrefs;
     if (!prefs?.enabled) continue;
 
-    const tokens = tokensByUser.get(row.user_id);
-    if (!tokens || tokens.length === 0) continue;
+    const allTokens = tokensByUser.get(row.user_id);
+    if (!allTokens || allTokens.length === 0) continue;
+    // Dedupe by token value: the same device can leave multiple rows behind
+    // (a rotated FCM token keeps the old row until it's pruned), and sending
+    // to identical tokens would show the notification more than once.
+    const seen = new Set<string>();
+    const tokens = allTokens.filter((t) => (seen.has(t.token) ? false : (seen.add(t.token), true)));
 
     const now = localNow(prefs.timezone || DEFAULT_TIMEZONE);
     const candidates = computeCandidates(data, prefs, now);

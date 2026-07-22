@@ -90,19 +90,25 @@ export async function sendPush(
       body: JSON.stringify({
         message: {
           token,
-          // Data-only payload, deliberately WITHOUT a top-level "notification"
-          // field. When a message has "notification", the Firebase Web SDK's
-          // compat service worker auto-displays it AND still invokes
-          // onBackgroundMessage — which also calls showNotification() in
-          // public/firebase-messaging-sw.js — so every push showed twice.
-          // Data-only messages only ever reach onBackgroundMessage, so it's
-          // the single place a notification gets shown. FCM data payload
-          // values must all be strings.
+          // Send BOTH "notification" and "data". iOS Safari Web Push only
+          // reliably delivers/wakes for messages that carry a "notification"
+          // block — a pure data-only message gets dropped there, which is why
+          // scheduled notifications stopped arriving on iPhone. The earlier
+          // "double notification" problem came NOT from this field but from
+          // firebase-messaging-compat's service worker auto-displaying it on
+          // top of our own handler; public/firebase-messaging-sw.js no longer
+          // loads that SDK (raw `push` listener), so only our code shows it —
+          // exactly once. "data" carries the click link (and title/body as a
+          // fallback the SW can read); all data values must be strings.
+          notification: { title: notification.title, body: notification.body },
           data: {
             title: notification.title,
             body: notification.body,
             link: notification.link ?? "/",
           },
+          webpush: notification.link
+            ? { fcm_options: { link: notification.link } }
+            : undefined,
         },
       }),
     },
