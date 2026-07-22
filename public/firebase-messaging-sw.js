@@ -1,39 +1,43 @@
 /* eslint-disable no-undef */
 // Static service worker for Firebase Cloud Messaging background push.
-// Served verbatim from the public root (not processed by Vite), so it can't
-// import the app's TS config — fill in the same values as your .env's
-// VITE_FIREBASE_* vars below. These are public client identifiers, safe here.
+// Served verbatim from the public root (not processed by Vite).
 //
 // This SW is separate from the vite-plugin-pwa-generated one (which handles
 // offline caching). It only listens for background push messages and does
 // not intercept fetch/navigation, so the two coexist without conflict.
+//
+// Deliberately does NOT use firebase-messaging-compat's onBackgroundMessage.
+// That SDK adds parsing/indirection before invoking our display code, and on
+// iOS Safari's Web Push implementation that extra latency is enough to blow
+// past its strict "call showNotification() promptly" requirement — when that
+// happens, Safari silently substitutes its own generic fallback notification
+// (just the app name, no body), which is exactly the "notification only says
+// 'Lumen Planner' with no message" bug. Handling the raw 'push' event
+// ourselves, synchronously and with no SDK in between, is the standard fix.
+// The FCM message this pairs with is a plain data payload (see
+// supabase/functions/send-notifications/fcm.ts) shaped as
+// `{ data: { title, body, link } }`, which is exactly `event.data.json().data`
+// here.
 
-importScripts("https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js");
-importScripts("https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js");
+self.addEventListener("push", (event) => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch {
+    payload = {};
+  }
+  const data = payload.data ?? {};
+  const title = data.title || "Lumen";
+  const body = data.body || "";
+  const link = data.link || "/";
 
-firebase.initializeApp({
-  apiKey: "AIzaSyB53glLKq2PHOMu8fRFfv_Cbs5WJ8ec4WA",
-  authDomain: "lumen-planner.firebaseapp.com",
-  projectId: "lumen-planner",
-  storageBucket: "lumen-planner.firebasestorage.app",
-  messagingSenderId: "847241440586",
-  appId: "1:847241440586:web:dde329f24a70e99e3425b3",
-});
-
-const messaging = firebase.messaging();
-
-// The server sends a data-only message (no top-level "notification" field)
-// specifically so this is the ONLY place a notification gets shown — a
-// message with "notification" makes the Firebase compat SW auto-display it
-// in addition to calling this handler, doubling every push. Read title/body/
-// link from payload.data (all FCM data values arrive as strings).
-messaging.onBackgroundMessage((payload) => {
-  const { title, body, link } = payload.data ?? {};
-  self.registration.showNotification(title ?? "Lumen", {
-    body: body ?? "",
-    icon: "/icon-192.png",
-    data: { link: link ?? "/" },
-  });
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      icon: "/icon-192.png",
+      data: { link },
+    }),
+  );
 });
 
 self.addEventListener("notificationclick", (event) => {
