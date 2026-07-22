@@ -3,6 +3,22 @@ import { User, UserData, emptyUserData } from "../types";
 import { supabase } from "@/integrations/supabase/client";
 import { CoreState, scheduleCloudSave, writeCache } from "../core";
 
+/**
+ * Some upstream error shapes (rate limits, gateway failures, non-standard
+ * GoTrue error bodies) don't carry a real `.message` — the underlying object
+ * can serialize to "{}" or "[object Object]" instead of readable text. Users
+ * were seeing that literal garbage in the toast ("erro {}"). This guards
+ * every auth error path so only a real message, or a clear Portuguese
+ * fallback, ever reaches the UI.
+ */
+function authErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error) {
+    const msg = error.message?.trim();
+    if (msg && msg !== "{}" && msg !== "[object Object]") return msg;
+  }
+  return fallback;
+}
+
 export interface AuthSlice {
   signup: (name: string, email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
   login: (email: string, password: string) => Promise<{ ok: boolean; error?: string }>;
@@ -43,7 +59,15 @@ export const createAuthSlice: StateCreator<
         emailRedirectTo: `${window.location.origin}/`,
       },
     });
-    if (error) return { ok: false, error: error.message };
+    if (error) {
+      return {
+        ok: false,
+        error: authErrorMessage(
+          error,
+          "Não foi possível criar a conta agora. Se você já tentou várias vezes, aguarde alguns minutos e tente de novo.",
+        ),
+      };
+    }
     const userId = data.user?.id;
     if (!userId) return { ok: false, error: "Não foi possível criar a conta." };
     // The DB trigger already inserts a profile row; this upsert just keeps
@@ -59,7 +83,9 @@ export const createAuthSlice: StateCreator<
   login: async (email, password) => {
     const e = email.trim().toLowerCase();
     const { error } = await supabase.auth.signInWithPassword({ email: e, password });
-    if (error) return { ok: false, error: error.message };
+    if (error) {
+      return { ok: false, error: authErrorMessage(error, "Não foi possível entrar. Confira seu e-mail e senha.") };
+    }
     return { ok: true };
   },
 
@@ -74,7 +100,9 @@ export const createAuthSlice: StateCreator<
     const { error } = await supabase.auth.resetPasswordForEmail(e, {
       redirectTo: `${window.location.origin}/redefinir-senha`,
     });
-    if (error) return { ok: false, error: error.message };
+    if (error) {
+      return { ok: false, error: authErrorMessage(error, "Não foi possível enviar o link agora. Tente novamente em alguns minutos.") };
+    }
     return { ok: true };
   },
 
@@ -83,7 +111,9 @@ export const createAuthSlice: StateCreator<
       return { ok: false, error: "Sua senha precisa ter pelo menos 8 caracteres." };
     }
     const { error } = await supabase.auth.updateUser({ password });
-    if (error) return { ok: false, error: error.message };
+    if (error) {
+      return { ok: false, error: authErrorMessage(error, "Não foi possível redefinir a senha agora. Tente novamente.") };
+    }
     return { ok: true };
   },
 
