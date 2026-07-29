@@ -16,8 +16,6 @@ import {
   Target,
   Clock,
   ArrowUpRight,
-  CalendarDays,
-  Repeat,
 } from "lucide-react";
 import { useAppStore, useUserData, todayKey } from "@/store/useAppStore";
 import { Link, useNavigate } from "react-router-dom";
@@ -28,13 +26,7 @@ import {
   streakOf,
 } from "@/lib/habits";
 import { formatDeadline, capitalizeWords } from "@/lib/date";
-
-const QUICK_ADD = [
-  { label: "Tarefa", to: "/agenda", icon: CheckCircle2 },
-  { label: "Evento", to: "/calendario", icon: CalendarDays },
-  { label: "Hábito", to: "/habitos", icon: Repeat },
-  { label: "Meta", to: "/metas", icon: Target },
-];
+import { QUICK_ADD } from "@/lib/quickAdd";
 
 
 export default function Dashboard() {
