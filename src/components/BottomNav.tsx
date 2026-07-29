@@ -22,19 +22,18 @@ import { QUICK_ADD } from "@/lib/quickAdd";
 
 /**
  * Mobile-only bottom tab bar, replacing the hamburger drawer as the primary
- * way to move around on a phone. Mirrors the sidebar's own two groupings
- * (see AppSidebar.tsx): "Hoje" (Início/Agenda/Calendário) sit directly on the
- * bar, "Foco" (Hábitos/Metas/Projetos/Mapa Mental) lives behind "Mais". The
- * center button is a raised quick-add, not a nav destination. Hidden from
- * `md` up, where the sidebar rail takes back over.
+ * way to move around on a phone. Início/Agenda/Hábitos/Calendário sit
+ * directly on the bar (Hábitos pinned per user request); Metas/Projetos/Mapa
+ * Mental live behind "Mais". The center button is a raised quick-add, not a
+ * nav destination. Hidden from `md` up, where the sidebar rail takes over.
  */
 const mainTabs = [
   { to: "/", label: "Início", icon: LayoutDashboard, end: true },
   { to: "/agenda", label: "Agenda", icon: CheckCircle2, end: false },
+  { to: "/habitos", label: "Hábitos", icon: Repeat, end: false },
 ];
 
 const moreTabs = [
-  { to: "/habitos", label: "Hábitos", icon: Repeat },
   { to: "/metas", label: "Metas", icon: Target },
   { to: "/projetos", label: "Projetos", icon: FolderKanban },
   { to: "/mapas", label: "Mapa Mental", icon: Network },
@@ -106,7 +105,7 @@ export function BottomNav() {
           <SheetHeader>
             <SheetTitle className="font-display text-xl">Mais</SheetTitle>
           </SheetHeader>
-          <div className="mt-4 grid grid-cols-2 gap-3">
+          <div className="mt-4 grid grid-cols-3 gap-3">
             {moreTabs.map((t) => (
               <button
                 key={t.to}
