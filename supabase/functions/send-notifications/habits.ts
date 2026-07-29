@@ -31,11 +31,23 @@ export function periodKeyFor(freq: HabitFrequency, date: Date = new Date()): str
 }
 
 export function periodKeyBack(freq: HabitFrequency, n: number, from: Date = new Date()): string {
-  const d = new Date(from);
-  if (freq === "daily") d.setDate(d.getDate() - n);
-  else if (freq === "weekly") d.setDate(d.getDate() - n * 7);
-  else d.setMonth(d.getMonth() - n);
-  return periodKeyFor(freq, d);
+  if (freq === "daily") {
+    const d = new Date(from);
+    d.setDate(d.getDate() - n);
+    return periodKeyFor(freq, d);
+  }
+  if (freq === "weekly") {
+    const d = new Date(from);
+    d.setDate(d.getDate() - n * 7);
+    return periodKeyFor(freq, d);
+  }
+  // Monthly: subtract via a month INDEX, not Date#setMonth() — see
+  // src/lib/habits.ts for why (day-of-month rollover near month-end silently
+  // skipped a month and let a broken streak read as unbroken).
+  const idx = from.getFullYear() * 12 + from.getMonth() - n;
+  const y = Math.floor(idx / 12);
+  const m = idx - y * 12;
+  return periodKeyFor(freq, new Date(y, m, 1));
 }
 
 export function streakOf(habit: HabitLike, now: Date = new Date()): number {

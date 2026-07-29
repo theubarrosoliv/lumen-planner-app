@@ -28,10 +28,23 @@ export function currentPeriodKey(habit: Habit): string {
 /** Returns the period key offset back by `n` periods from today. */
 export function periodKeyBack(freq: HabitFrequency, n: number): string {
   const d = new Date();
-  if (freq === "daily") d.setDate(d.getDate() - n);
-  else if (freq === "weekly") d.setDate(d.getDate() - n * 7);
-  else d.setMonth(d.getMonth() - n);
-  return periodKeyFor(freq, d);
+  if (freq === "daily") {
+    d.setDate(d.getDate() - n);
+    return periodKeyFor(freq, d);
+  }
+  if (freq === "weekly") {
+    d.setDate(d.getDate() - n * 7);
+    return periodKeyFor(freq, d);
+  }
+  // Monthly: subtract via a month INDEX, not Date#setMonth(). setMonth rolls
+  // over when the current day-of-month doesn't exist in the target month
+  // (e.g. Mar 31 minus 1 month lands on Mar 3, since Feb has no 31st) — that
+  // silently skipped a month and let a broken monthly streak read as unbroken
+  // instead of resetting to 0. Using day=1 sidesteps day-of-month entirely.
+  const idx = d.getFullYear() * 12 + d.getMonth() - n;
+  const y = Math.floor(idx / 12);
+  const m = idx - y * 12;
+  return periodKeyFor(freq, new Date(y, m, 1));
 }
 
 /** Last N period keys, oldest first. */

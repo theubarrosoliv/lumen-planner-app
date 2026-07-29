@@ -52,7 +52,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
         <div className="flex flex-1 flex-col">
           <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-background/70 px-4 pt-safe-top backdrop-blur-xl md:px-8">
-            <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
+            {/* The bottom tab bar (+ its "Mais" sheet) replaces the drawer as
+                the mobile navigation entry point, so the trigger only shows
+                where the sidebar rail is actually visible (md+). */}
+            <SidebarTrigger className="hidden text-muted-foreground hover:text-foreground md:inline-flex" />
 
             <div className="ml-auto flex items-center gap-2">
               {!online && (
