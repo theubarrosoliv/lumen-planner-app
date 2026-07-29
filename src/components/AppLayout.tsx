@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
+import { BottomNav } from "@/components/BottomNav";
 import { LogOut, WifiOff, BellRing } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
@@ -100,8 +101,13 @@ export default function AppLayout({ children }: { children: ReactNode }) {
             </div>
           </header>
 
-          <main className="flex-1 px-4 py-6 pb-safe-bottom md:px-8 md:py-10">{children}</main>
+          <main className="flex-1 px-4 py-6 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:px-8 md:py-10 md:pb-10">
+            {children}
+          </main>
         </div>
+
+        {/* Mobile bottom tab bar (hidden on md+ where the sidebar takes over) */}
+        <BottomNav />
       </div>
     </SidebarProvider>
   );

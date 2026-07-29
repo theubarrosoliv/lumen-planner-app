@@ -245,14 +245,14 @@ export default function Agenda() {
                   initial={t}
                   onSave={(patch) => updateTask(t.id, patch)}
                   trigger={
-                    <button className="opacity-0 transition-opacity hover:text-primary-glow group-hover:opacity-100">
+                    <button className="opacity-100 transition-opacity hover:text-primary-glow md:opacity-0 md:group-hover:opacity-100">
                       <Pencil className="h-4 w-4" />
                     </button>
                   }
                 />
                 <button
                   onClick={() => removeTask(t.id)}
-                  className="opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                  className="opacity-100 transition-opacity hover:text-destructive md:opacity-0 md:group-hover:opacity-100"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>

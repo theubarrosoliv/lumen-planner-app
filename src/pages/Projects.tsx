@@ -283,14 +283,14 @@ export default function Projects() {
                       initial={p}
                       onSave={(v) => updateProject(p.id, v)}
                       trigger={
-                        <button className="opacity-0 transition-opacity hover:text-primary-glow group-hover:opacity-100">
+                        <button className="opacity-100 transition-opacity hover:text-primary-glow md:opacity-0 md:group-hover:opacity-100">
                           <Pencil className="h-4 w-4" />
                         </button>
                       }
                     />
                     <button
                       onClick={() => removeProject(p.id)}
-                      className="opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                      className="opacity-100 transition-opacity hover:text-destructive md:opacity-0 md:group-hover:opacity-100"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -365,14 +365,14 @@ export default function Projects() {
                           initial={t}
                           onSave={(v) => updateProjectTask(p.id, t.id, v)}
                           trigger={
-                            <button className="opacity-0 transition-opacity hover:text-primary-glow group-hover/t:opacity-100">
+                            <button className="opacity-100 transition-opacity hover:text-primary-glow md:opacity-0 md:group-hover/t:opacity-100">
                               <Pencil className="h-3 w-3" />
                             </button>
                           }
                         />
                         <button
                           onClick={() => removeProjectTask(p.id, t.id)}
-                          className="opacity-0 transition-opacity hover:text-destructive group-hover/t:opacity-100"
+                          className="opacity-100 transition-opacity hover:text-destructive md:opacity-0 md:group-hover/t:opacity-100"
                         >
                           <Trash2 className="h-3 w-3" />
                         </button>

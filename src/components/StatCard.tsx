@@ -21,7 +21,7 @@ export function StatCard({ label, value, hint, icon, accent = "primary", classNa
   return (
     <div
       className={cn(
-        "group relative overflow-hidden rounded-2xl border border-border bg-gradient-card p-5 transition-all duration-500 hover:border-primary/40 hover:shadow-elegant",
+        "group relative overflow-hidden rounded-2xl border border-border bg-gradient-card p-4 transition-all duration-500 hover:border-primary/40 hover:shadow-elegant md:p-5",
         className
       )}
     >
@@ -34,12 +34,12 @@ export function StatCard({ label, value, hint, icon, accent = "primary", classNa
       />
       <div className="relative flex items-start justify-between">
         <div>
-          <p className="text-xs uppercase tracking-wider text-muted-foreground">{label}</p>
-          <p className="mt-2 font-display text-3xl">{value}</p>
+          <p className="text-[11px] uppercase tracking-wider text-muted-foreground md:text-xs">{label}</p>
+          <p className="mt-1.5 font-display text-2xl md:mt-2 md:text-3xl">{value}</p>
           {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
         </div>
         {icon && (
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-secondary/60 text-foreground/80">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-secondary/60 text-foreground/80 md:h-10 md:w-10">
             {icon}
           </div>
         )}

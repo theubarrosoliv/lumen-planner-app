@@ -220,14 +220,14 @@ export default function Habits() {
                       initial={h}
                       onSave={(v) => updateHabit(h.id, v)}
                       trigger={
-                        <button className="opacity-0 transition-opacity hover:text-primary-glow group-hover:opacity-100">
+                        <button className="opacity-100 transition-opacity hover:text-primary-glow md:opacity-0 md:group-hover:opacity-100">
                           <Pencil className="h-4 w-4" />
                         </button>
                       }
                     />
                     <button
                       onClick={() => removeHabit(h.id)}
-                      className="opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                      className="opacity-100 transition-opacity hover:text-destructive md:opacity-0 md:group-hover:opacity-100"
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>
@@ -335,7 +335,7 @@ function BackdateFab({ habits }: { habits: Habit[] }) {
       <PopoverTrigger asChild>
         <button
           aria-label="Marcar período anterior"
-          className="fixed bottom-[calc(1.5rem+theme(spacing.safe-bottom))] right-[calc(1.5rem+theme(spacing.safe-right))] z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-primary text-primary-foreground shadow-elegant transition-transform hover:scale-105 active:scale-95"
+          className="fixed bottom-[calc(5.5rem+theme(spacing.safe-bottom))] right-[calc(1.25rem+theme(spacing.safe-right))] z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-primary text-primary-foreground shadow-elegant transition-transform hover:scale-105 active:scale-95 md:bottom-[calc(1.5rem+theme(spacing.safe-bottom))] md:right-[calc(1.5rem+theme(spacing.safe-right))]"
         >
           <CalendarPlus className="h-6 w-6" />
         </button>
