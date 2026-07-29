@@ -303,14 +303,14 @@ export default function CalendarPage() {
                       initial={e}
                       onSave={(v) => updateEvent(e.id, v)}
                       trigger={
-                        <button className="opacity-0 transition-opacity hover:text-primary-glow group-hover:opacity-100">
+                        <button className="opacity-100 transition-opacity hover:text-primary-glow md:opacity-0 md:group-hover:opacity-100">
                           <Pencil className="h-3.5 w-3.5" />
                         </button>
                       }
                     />
                     <button
                       onClick={() => removeEvent(e.id)}
-                      className="opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                      className="opacity-100 transition-opacity hover:text-destructive md:opacity-0 md:group-hover:opacity-100"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>

@@ -130,7 +130,7 @@ export function HabitsCharts() {
             </button>
           ))}
         </div>
-        <div className="h-52">
+        <div className="h-40 md:h-52">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={habitsTrend} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
               <defs>
@@ -177,7 +177,7 @@ export function HabitsCharts() {
         icon={<Flame className="h-4 w-4" />}
         empty={streakData.length === 0}
       >
-        <div className="h-52">
+        <div className="h-40 md:h-52">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
               data={streakData}

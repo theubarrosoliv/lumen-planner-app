@@ -284,14 +284,14 @@ export default function Goals() {
                           initial={g}
                           onSave={(v) => updateGoal(g.id, v)}
                           trigger={
-                            <button className="opacity-0 transition-opacity hover:text-primary-glow group-hover:opacity-100">
+                            <button className="opacity-100 transition-opacity hover:text-primary-glow md:opacity-0 md:group-hover:opacity-100">
                               <Pencil className="h-4 w-4" />
                             </button>
                           }
                         />
                         <button
                           onClick={() => removeGoal(g.id)}
-                          className="opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                          className="opacity-100 transition-opacity hover:text-destructive md:opacity-0 md:group-hover:opacity-100"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -337,14 +337,14 @@ export default function Goals() {
                           initial={m}
                           onSave={(v) => updateMilestone(g.id, m.id, v)}
                           trigger={
-                            <button className="opacity-0 transition-opacity hover:text-primary-glow group-hover/m:opacity-100">
+                            <button className="opacity-100 transition-opacity hover:text-primary-glow md:opacity-0 md:group-hover/m:opacity-100">
                               <Pencil className="h-3 w-3" />
                             </button>
                           }
                         />
                         <button
                           onClick={() => removeMilestone(g.id, m.id)}
-                          className="opacity-0 transition-opacity hover:text-destructive group-hover/m:opacity-100"
+                          className="opacity-100 transition-opacity hover:text-destructive md:opacity-0 md:group-hover/m:opacity-100"
                         >
                           <Trash2 className="h-3 w-3" />
                         </button>

@@ -3,6 +3,12 @@ import { StatCard } from "@/components/StatCard";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   CheckCircle2,
   Circle,
   Flame,
@@ -10,15 +16,25 @@ import {
   Target,
   Clock,
   ArrowUpRight,
+  CalendarDays,
+  Repeat,
 } from "lucide-react";
 import { useAppStore, useUserData, todayKey } from "@/store/useAppStore";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   FREQUENCY_LABEL,
   currentPeriodKey,
   lastNPeriods,
   streakOf,
 } from "@/lib/habits";
+import { formatDeadline, capitalizeWords } from "@/lib/date";
+
+const QUICK_ADD = [
+  { label: "Tarefa", to: "/agenda", icon: CheckCircle2 },
+  { label: "Evento", to: "/calendario", icon: CalendarDays },
+  { label: "Hábito", to: "/habitos", icon: Repeat },
+  { label: "Meta", to: "/metas", icon: Target },
+];
 
 
 export default function Dashboard() {
@@ -26,6 +42,7 @@ export default function Dashboard() {
   const toggleTask = useAppStore((s) => s.toggleTask);
   const toggleHabitPeriod = useAppStore((s) => s.toggleHabitPeriod);
   const user = useAppStore((s) => s.currentUser());
+  const navigate = useNavigate();
 
   const todayTasks = tasks
     .filter((t) => t.date === todayKey())
@@ -60,7 +77,7 @@ export default function Dashboard() {
     day: "numeric",
     month: "long",
   });
-  const firstName = user?.name.split(" ")[0] ?? "";
+  const firstName = capitalizeWords(user?.name.split(" ")[0] ?? "");
 
   const hour = new Date().getHours();
   const greet = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
@@ -76,11 +93,25 @@ export default function Dashboard() {
             : `Você tem ${todayTasks.length} compromisso${todayTasks.length !== 1 ? "s" : ""} e ${habits.length} hábito${habits.length !== 1 ? "s" : ""} hoje.`
         }
         action={
-          <Link to="/agenda">
-            <Button className="bg-gradient-primary shadow-elegant transition-transform hover:scale-[1.02]">
-              <Plus className="mr-1 h-4 w-4" /> Novo item
-            </Button>
-          </Link>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button className="bg-gradient-primary shadow-elegant transition-transform hover:scale-[1.02]">
+                <Plus className="mr-1 h-4 w-4" /> Novo item
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              {QUICK_ADD.map((q) => (
+                <DropdownMenuItem
+                  key={q.to}
+                  onClick={() => navigate(q.to)}
+                  className="cursor-pointer"
+                >
+                  <q.icon className="mr-2 h-4 w-4" />
+                  {q.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
         }
       />
 
@@ -192,7 +223,7 @@ export default function Dashboard() {
                       <div className="mb-2 flex items-baseline justify-between">
                         <p className="text-sm font-medium">{g.name}</p>
                         <p className="text-mono text-xs text-muted-foreground">
-                          {pct}% · {g.deadline}
+                          {pct}% · {formatDeadline(g.deadline)}
                         </p>
                       </div>
                       <Progress value={pct} className="h-1.5" />
