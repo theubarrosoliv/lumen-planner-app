@@ -13,9 +13,15 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { NotifyField } from "@/components/NotifyField";
+import { TagMultiSelect } from "@/components/TagMultiSelect";
+import { useConfirmDelete } from "@/hooks/use-confirm-delete";
+import { useCustomOptions } from "@/hooks/use-custom-options";
 import { useAppStore, useUserData, dateKey, todayKey } from "@/store/useAppStore";
 import { CalEvent, NotifyLeadUnit } from "@/store/types";
+import { itemTags } from "@/lib/tags";
 import { toast } from "sonner";
+
+const TAGS = ["Foco", "Trabalho", "Reunião", "Hábito", "Saúde", "Pessoal"];
 
 const monthNames = [
   "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
@@ -47,6 +53,7 @@ function EventDialog({
     date: string;
     time?: string;
     color: string;
+    tags: string[];
     notify?: boolean;
     notifyLeadValue?: number;
     notifyLeadUnit?: NotifyLeadUnit;
@@ -57,9 +64,17 @@ function EventDialog({
   const [color, setColor] = useState(initial?.color ?? "bg-primary");
   const [date, setDate] = useState(initial?.date ?? defaultDate ?? todayKey());
   const [time, setTime] = useState(initial?.time ?? "");
+  const [tags, setTags] = useState<string[]>(initial ? itemTags(initial) : []);
   const [notify, setNotify] = useState(initial?.notify !== false);
   const [notifyLeadValue, setNotifyLeadValue] = useState<number | undefined>(initial?.notifyLeadValue);
   const [notifyLeadUnit, setNotifyLeadUnit] = useState<NotifyLeadUnit>(initial?.notifyLeadUnit ?? "hours");
+  const {
+    options: tagOptions,
+    custom: customTags,
+    addOption: addTagOption,
+    removeOption: removeTagOption,
+    renameOption: renameTagOption,
+  } = useCustomOptions("lumen-custom-tags", TAGS);
 
   const submit = () => {
     if (!title.trim()) return toast.error("Defina o título do evento.");
@@ -68,6 +83,7 @@ function EventDialog({
       date,
       time: time || undefined,
       color,
+      tags,
       notify,
       notifyLeadValue,
       notifyLeadUnit,
@@ -76,6 +92,7 @@ function EventDialog({
     if (!initial) {
       setTitle("");
       setTime("");
+      setTags([]);
     }
   };
 
@@ -119,6 +136,18 @@ function EventDialog({
               ))}
             </div>
           </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Tags</Label>
+            <TagMultiSelect
+              value={tags}
+              onChange={setTags}
+              options={tagOptions}
+              onCreate={addTagOption}
+              customOptions={customTags}
+              onRemove={removeTagOption}
+              onRename={renameTagOption}
+            />
+          </div>
           <NotifyField
             notify={notify}
             onNotifyChange={setNotify}
@@ -149,6 +178,7 @@ export default function CalendarPage() {
   const addEvent = useAppStore((s) => s.addEvent);
   const updateEvent = useAppStore((s) => s.updateEvent);
   const removeEvent = useAppStore((s) => s.removeEvent);
+  const { requestDelete, dialog } = useConfirmDelete();
 
   const [selected, setSelected] = useState<string>(todayKey());
 
@@ -297,7 +327,12 @@ export default function CalendarPage() {
                     {e.time && (
                       <span className="text-mono shrink-0 text-xs text-muted-foreground">{e.time}</span>
                     )}
-                    <span className="flex-1 truncate">{e.title}</span>
+                    <span className="min-w-0 flex-1 truncate">{e.title}</span>
+                    {itemTags(e).length > 0 && (
+                      <span className="hidden shrink-0 truncate text-[10px] uppercase tracking-wider text-muted-foreground/70 sm:inline">
+                        {itemTags(e).join(" · ")}
+                      </span>
+                    )}
                     <EventDialog
                       title="Editar evento"
                       initial={e}
@@ -309,7 +344,12 @@ export default function CalendarPage() {
                       }
                     />
                     <button
-                      onClick={() => removeEvent(e.id)}
+                      onClick={() =>
+                        requestDelete(() => removeEvent(e.id), {
+                          title: "Excluir evento?",
+                          description: `"${e.title}" será removido permanentemente.`,
+                        })
+                      }
                       className="opacity-100 transition-opacity hover:text-destructive md:opacity-0 md:group-hover:opacity-100"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
@@ -342,6 +382,7 @@ export default function CalendarPage() {
           </div>
         </aside>
       </div>
+      {dialog}
     </div>
   );
 }

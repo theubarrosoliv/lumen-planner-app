@@ -22,12 +22,22 @@ export interface NotifyOverride {
   notifyLeadUnit?: NotifyLeadUnit;
 }
 
+export type TaskPriority = "high" | "medium" | "low";
+
+export type TaskRecurrence = "daily" | "weekly" | "monthly";
+
 export interface Task extends NotifyOverride {
   id: string;
   date: string; // YYYY-MM-DD
   time: string; // HH:MM or "—"
   title: string;
-  tag: string;
+  /** @deprecated superseded by `tags`; kept so tasks saved before the
+   * multi-tag change still read correctly (see src/lib/tags.ts). */
+  tag?: string;
+  tags?: string[];
+  priority?: TaskPriority;
+  /** When set, completing the task creates its next occurrence automatically. */
+  recurrence?: TaskRecurrence;
   done: boolean;
   notes?: string;
 }
@@ -86,6 +96,7 @@ export interface CalEvent extends NotifyOverride {
   time?: string; // HH:MM — optional; when set, the event (and its reminder) is anchored to this moment
   title: string;
   color: string; // bg-* class
+  tags?: string[];
 }
 
 export interface MindNode {

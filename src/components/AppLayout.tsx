@@ -4,6 +4,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { BottomNav } from "@/components/BottomNav";
 import { LumenMark } from "@/components/LumenMark";
+import { GlobalSearch } from "@/components/GlobalSearch";
 import { LogOut, WifiOff, BellRing } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
@@ -74,6 +75,8 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                   Offline
                 </div>
               )}
+
+              <GlobalSearch />
 
               <ThemeToggle />
 

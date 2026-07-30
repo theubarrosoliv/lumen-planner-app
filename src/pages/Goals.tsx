@@ -16,6 +16,7 @@ import {
 import { CreatableSelect } from "@/components/CreatableSelect";
 import { NotifyField } from "@/components/NotifyField";
 import { useCustomOptions } from "@/hooks/use-custom-options";
+import { useConfirmDelete } from "@/hooks/use-confirm-delete";
 import { useAppStore, useUserData } from "@/store/useAppStore";
 import { toast } from "sonner";
 import { Goal, Milestone, NotifyLeadUnit } from "@/store/types";
@@ -216,6 +217,7 @@ export default function Goals() {
   const addMilestone = useAppStore((s) => s.addMilestone);
   const updateMilestone = useAppStore((s) => s.updateMilestone);
   const removeMilestone = useAppStore((s) => s.removeMilestone);
+  const { requestDelete, dialog } = useConfirmDelete();
 
   const [newMs, setNewMs] = useState<Record<string, { name: string; deadline: string }>>({});
 
@@ -290,7 +292,12 @@ export default function Goals() {
                           }
                         />
                         <button
-                          onClick={() => removeGoal(g.id)}
+                          onClick={() =>
+                            requestDelete(() => removeGoal(g.id), {
+                              title: "Excluir meta?",
+                              description: `"${g.name}" e seus ${g.milestones.length} marco(s) serão perdidos.`,
+                            })
+                          }
                           className="opacity-100 transition-opacity hover:text-destructive md:opacity-0 md:group-hover:opacity-100"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -343,7 +350,12 @@ export default function Goals() {
                           }
                         />
                         <button
-                          onClick={() => removeMilestone(g.id, m.id)}
+                          onClick={() =>
+                            requestDelete(() => removeMilestone(g.id, m.id), {
+                              title: "Excluir marco?",
+                              description: `"${m.name}" será removido permanentemente.`,
+                            })
+                          }
                           className="opacity-100 transition-opacity hover:text-destructive md:opacity-0 md:group-hover/m:opacity-100"
                         >
                           <Trash2 className="h-3 w-3" />
@@ -388,6 +400,7 @@ export default function Goals() {
           })}
         </div>
       )}
+      {dialog}
     </div>
   );
 }
