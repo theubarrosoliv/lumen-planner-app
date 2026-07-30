@@ -75,6 +75,30 @@ export function totalCompletions(habit: Habit): number {
   return Object.values(habit.completions).filter(Boolean).length;
 }
 
+/**
+ * For the history bar: which of `periods` (oldest→newest, as from
+ * lastNPeriods) belong to the CURRENT unbroken streak. Mirrors streakOf's
+ * walk-backward-from-now logic, but returns a mask instead of a count, so a
+ * past gap visually clears everything before it — old completions before a
+ * break no longer read as "still streaking" in the bar. The most recent
+ * period is allowed to be incomplete (today/this week/month may not be done
+ * yet) without breaking the chain, same as streakOf.
+ */
+export function activeStreakPeriods(habit: Habit, periods: string[]): boolean[] {
+  const mask = new Array(periods.length).fill(false);
+  let broken = false;
+  for (let i = periods.length - 1; i >= 0; i--) {
+    if (broken) continue;
+    const isCurrent = i === periods.length - 1;
+    if (habit.completions[periods[i]]) {
+      mask[i] = true;
+    } else if (!isCurrent) {
+      broken = true;
+    }
+  }
+  return mask;
+}
+
 export const FREQUENCY_LABEL: Record<HabitFrequency, string> = {
   daily: "Diário",
   weekly: "Semanal",
