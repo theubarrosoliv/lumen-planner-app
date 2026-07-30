@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { defaultNotificationPrefs } from "@/store/types";
 
 vi.mock("@/integrations/supabase/client", async () => {
   const mod = await import("./mocks/supabase");
@@ -14,7 +15,17 @@ function loginTestUser() {
   useAppStore.setState({
     currentUserId: TEST_USER_ID,
     users: [{ id: TEST_USER_ID, name: "Test", email: "test@example.com", createdAt: new Date().toISOString() }],
-    data: { [TEST_USER_ID]: { tasks: [], habits: [], goals: [], projects: [], events: [], mindmaps: [] } },
+    data: {
+      [TEST_USER_ID]: {
+        tasks: [],
+        habits: [],
+        goals: [],
+        projects: [],
+        events: [],
+        mindmaps: [],
+        notificationPrefs: defaultNotificationPrefs(),
+      },
+    },
     hydrated: true,
   });
 }

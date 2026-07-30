@@ -73,8 +73,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 </div>
               )}
 
-              <GlobalSearch />
-
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-primary text-xs font-medium text-primary-foreground shadow-soft transition-transform hover:scale-105">
