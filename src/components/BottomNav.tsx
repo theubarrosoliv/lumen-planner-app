@@ -92,10 +92,8 @@ export function BottomNav() {
           </NavLink>
         </li>
 
-        <li className="relative flex-1">
-          {/* Global search: raised bubble above "Mais", mirroring the center
-              "+" button's floating treatment but secondary/smaller since
-              search isn't the primary action. */}
+        <li className="flex-1">
+          {/* Fixed-position, not tied to this li's box — see GlobalSearch.tsx. */}
           <GlobalSearch />
           <button onClick={() => setMoreOpen(true)} className={tabCls(moreActive)}>
             <MoreHorizontal className="h-[22px] w-[22px] shrink-0" />

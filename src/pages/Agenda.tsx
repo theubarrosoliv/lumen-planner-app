@@ -122,7 +122,7 @@ function TaskDialog({
             <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Título</Label>
             <Input value={text} onChange={(e) => setText(e.target.value)} autoFocus />
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Data</Label>
               <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
@@ -131,6 +131,8 @@ function TaskDialog({
               <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Hora</Label>
               <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
             </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                 Duração (min)
@@ -146,8 +148,6 @@ function TaskDialog({
                 onChange={(e) => setDuration(e.target.value === "" ? undefined : Number(e.target.value))}
               />
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                 Prioridade
@@ -167,25 +167,25 @@ function TaskDialog({
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                Repetir
-              </Label>
-              <Select
-                value={recurrence}
-                onValueChange={(v) => setRecurrence(v as TaskRecurrence | "none")}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Não repetir</SelectItem>
-                  <SelectItem value="daily">Diariamente</SelectItem>
-                  <SelectItem value="weekly">Semanalmente</SelectItem>
-                  <SelectItem value="monthly">Mensalmente</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+              Repetir
+            </Label>
+            <Select
+              value={recurrence}
+              onValueChange={(v) => setRecurrence(v as TaskRecurrence | "none")}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Não repetir</SelectItem>
+                <SelectItem value="daily">Diariamente</SelectItem>
+                <SelectItem value="weekly">Semanalmente</SelectItem>
+                <SelectItem value="monthly">Mensalmente</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Tags</Label>
@@ -230,7 +230,7 @@ export default function Agenda() {
   const { requestDelete, dialog } = useConfirmDelete();
 
   const [filter, setFilter] = useState<"hoje" | "semana" | "todas">("hoje");
-  const [sort, setSort] = useState<"padrao" | "horario" | "prioridade">("horario");
+  const [sort, setSort] = useState<"padrao" | "horario" | "prioridade">("padrao");
 
   const today = new Date();
   const filtered = tasks
@@ -245,8 +245,15 @@ export default function Agenda() {
       return true;
     })
     .sort((a, b) => {
-      if (sort === "horario") return (a.date + a.time).localeCompare(b.date + b.time);
+      if (sort === "horario") {
+        const aNoTime = a.time === "—";
+        const bNoTime = b.time === "—";
+        if (aNoTime !== bNoTime) return aNoTime ? 1 : -1;
+        return (a.date + a.time).localeCompare(b.date + b.time);
+      }
       if (sort === "prioridade") {
+        // PRIORITY_ORDER.none is the highest value, so tasks with no
+        // priority naturally sort last here.
         return PRIORITY_ORDER[a.priority ?? "none"] - PRIORITY_ORDER[b.priority ?? "none"];
       }
       // "padrao": tasks are appended on creation, so the array's own order

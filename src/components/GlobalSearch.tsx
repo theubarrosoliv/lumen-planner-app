@@ -12,11 +12,13 @@ import {
 import { useUserData } from "@/store/useAppStore";
 
 /**
- * App-wide quick jump: Cmd/Ctrl+K, or the raised bubble above "Mais" in the
- * bottom nav, opens a fuzzy search across every item's title. Selecting one
- * navigates to its section — there's no per-item route to deep-link into.
- * Rendered inside BottomNav.tsx (which stays mounted, just visually hidden
- * via `md:hidden`, so the Cmd/Ctrl+K shortcut keeps working on desktop too).
+ * App-wide quick jump: Cmd/Ctrl+K, or the fixed bottom-right bubble (the same
+ * corner slot the habit "marcar período anterior" FAB used to occupy — see
+ * task_628348eb for relocating that feature), opens a fuzzy search across
+ * every item's title. Selecting one navigates to its section — there's no
+ * per-item route to deep-link into. Rendered inside BottomNav.tsx (which
+ * stays mounted, just visually hidden via `md:hidden`, so the Cmd/Ctrl+K
+ * shortcut keeps working on desktop too).
  */
 export function GlobalSearch() {
   const [open, setOpen] = useState(false);
@@ -44,9 +46,9 @@ export function GlobalSearch() {
       <button
         onClick={() => setOpen(true)}
         aria-label="Buscar"
-        className="absolute -top-5 left-1/2 z-10 flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-soft transition-transform hover:text-foreground active:scale-95"
+        className="fixed bottom-[calc(5.5rem+theme(spacing.safe-bottom))] right-[calc(1.25rem+theme(spacing.safe-right))] z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-primary text-primary-foreground shadow-elegant transition-transform hover:scale-105 active:scale-95 md:bottom-[calc(1.5rem+theme(spacing.safe-bottom))] md:right-[calc(1.5rem+theme(spacing.safe-right))]"
       >
-        <Search className="h-4 w-4" />
+        <Search className="h-6 w-6" />
       </button>
       <CommandDialog open={open} onOpenChange={setOpen}>
         <CommandInput placeholder="Buscar tarefas, hábitos, metas, projetos, eventos…" />

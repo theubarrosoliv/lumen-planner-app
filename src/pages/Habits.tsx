@@ -3,7 +3,7 @@ import { SectionHeader } from "@/components/SectionHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Flame, Plus, Trash2, Pencil, Check, CalendarDays, Repeat, BarChart3, CalendarPlus } from "lucide-react";
+import { Flame, Plus, Trash2, Pencil, Check, CalendarDays, Repeat, BarChart3 } from "lucide-react";
 import { useAppStore, useUserData } from "@/store/useAppStore";
 import { Habit, HabitFrequency, NotifyLeadUnit } from "@/store/types";
 import {
@@ -14,8 +14,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Calendar } from "@/components/ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import {
@@ -23,7 +21,6 @@ import {
   FREQUENCY_UNIT,
   currentPeriodKey,
   lastNPeriods,
-  periodKeyFor,
   streakOf,
   totalCompletions,
 } from "@/lib/habits";
@@ -311,92 +308,7 @@ export default function Habits() {
         </div>
       )}
 
-      {habits.length > 0 && <BackdateFab habits={habits} />}
       {dialog}
     </div>
-  );
-}
-
-function BackdateFab({ habits }: { habits: Habit[] }) {
-  const toggleHabitPeriod = useAppStore((s) => s.toggleHabitPeriod);
-  const [open, setOpen] = useState(false);
-  const [habitId, setHabitId] = useState<string>(habits[0]?.id ?? "");
-  const [date, setDate] = useState<Date | undefined>(new Date());
-
-  const habit = habits.find((h) => h.id === habitId) ?? habits[0];
-  const freq = habit?.frequency ?? "daily";
-  const targetKey = date ? periodKeyFor(freq, date) : "";
-  const alreadyDone = habit && targetKey ? !!habit.completions[targetKey] : false;
-
-  const apply = () => {
-    if (!habit || !date) return;
-    if (alreadyDone) {
-      toast.info("Esse período já está marcado.");
-      return;
-    }
-    toggleHabitPeriod(habit.id, targetKey);
-    toast.success(`Marcado: ${habit.name} · ${targetKey}`);
-  };
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          aria-label="Marcar período anterior"
-          className="fixed bottom-[calc(5.5rem+theme(spacing.safe-bottom))] right-[calc(1.25rem+theme(spacing.safe-right))] z-40 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-primary text-primary-foreground shadow-elegant transition-transform hover:scale-105 active:scale-95 md:bottom-[calc(1.5rem+theme(spacing.safe-bottom))] md:right-[calc(1.5rem+theme(spacing.safe-right))]"
-        >
-          <CalendarPlus className="h-6 w-6" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent
-        align="end"
-        side="top"
-        sideOffset={12}
-        className="w-[320px] rounded-2xl border-border bg-card p-3"
-      >
-        <div className="mb-2 px-1">
-          <p className="font-display text-base">Marcar período anterior</p>
-          <p className="text-[11px] text-muted-foreground">
-            Selecione o hábito e a data — usamos o período correspondente.
-          </p>
-        </div>
-        <div className="mb-3 px-1">
-          <Select value={habitId} onValueChange={setHabitId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Escolha um hábito" />
-            </SelectTrigger>
-            <SelectContent>
-              {habits.map((h) => (
-                <SelectItem key={h.id} value={h.id}>
-                  {h.name} · {FREQUENCY_LABEL[h.frequency ?? "daily"]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <Calendar
-          mode="single"
-          selected={date}
-          onSelect={setDate}
-          disabled={(d) => d > new Date()}
-          initialFocus
-          className={cn("p-3 pointer-events-auto")}
-        />
-        <div className="mt-2 flex items-center justify-between gap-2 px-1">
-          <span className="text-[11px] text-muted-foreground">
-            {targetKey ? `Período: ${targetKey}` : "—"}
-            {alreadyDone && " · já marcado"}
-          </span>
-          <Button
-            size="sm"
-            onClick={apply}
-            disabled={!date || alreadyDone}
-            className="bg-gradient-primary shadow-elegant"
-          >
-            Marcar
-          </Button>
-        </div>
-      </PopoverContent>
-    </Popover>
   );
 }
