@@ -1,12 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Outlet, Route, Routes } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import AppLayout from "@/components/AppLayout";
 import AuthGuard from "@/components/AuthGuard";
-import Index from "./pages/Index.tsx";
+import Dashboard from "./pages/Dashboard";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 import Agenda from "./pages/Agenda";
@@ -22,11 +22,22 @@ import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
 
-const wrap = (node: React.ReactNode) => (
-  <AuthGuard>
-    <AppLayout>{node}</AppLayout>
-  </AuthGuard>
-);
+/**
+ * One persistent AuthGuard + AppLayout instance for every authenticated
+ * route, via <Outlet/>. Previously each route built its own
+ * <AuthGuard><AppLayout>{page}</AppLayout></AuthGuard> tree, so React Router
+ * remounted the sidebar/header/bottom-nav from scratch on every navigation
+ * instead of just swapping the page content.
+ */
+function AuthedLayout() {
+  return (
+    <AuthGuard>
+      <AppLayout>
+        <Outlet />
+      </AppLayout>
+    </AuthGuard>
+  );
+}
 
 const App = () => (
   <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
@@ -36,18 +47,20 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/redefinir-senha" element={<ResetPassword />} />
-            <Route path="/agenda" element={wrap(<Agenda />)} />
-            <Route path="/calendario" element={wrap(<CalendarPage />)} />
-            <Route path="/habitos" element={wrap(<Habits />)} />
-            <Route path="/metas" element={wrap(<Goals />)} />
-            <Route path="/projetos" element={wrap(<Projects />)} />
-            <Route path="/mapas" element={wrap(<MindMaps />)} />
-            <Route path="/mapas/:id" element={wrap(<MindMapPage />)} />
-            <Route path="/notificacoes" element={wrap(<Notifications />)} />
-            <Route path="/configuracoes" element={wrap(<Settings />)} />
+            <Route element={<AuthedLayout />}>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/agenda" element={<Agenda />} />
+              <Route path="/calendario" element={<CalendarPage />} />
+              <Route path="/habitos" element={<Habits />} />
+              <Route path="/metas" element={<Goals />} />
+              <Route path="/projetos" element={<Projects />} />
+              <Route path="/mapas" element={<MindMaps />} />
+              <Route path="/mapas/:id" element={<MindMapPage />} />
+              <Route path="/notificacoes" element={<Notifications />} />
+              <Route path="/configuracoes" element={<Settings />} />
+            </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
