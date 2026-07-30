@@ -130,23 +130,15 @@
     @apply border-border;
   }
 
-  html {
-    font-feature-settings: "ss01", "ss02", "cv11";
-  }
-
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: "Geist", system-ui, sans-serif;
+    font-family: "Inter", system-ui, sans-serif;
     background-image: var(--gradient-aurora);
     background-attachment: fixed;
   }
 
   h1, h2, h3, h4 {
-    font-family: "Fraunces", "Geist", serif;
-    font-optical-sizing: auto;
-    font-variation-settings: "SOFT" 50, "WONK" 0;
     letter-spacing: -0.02em;
-    font-weight: 400;
   }
 
   ::selection {
@@ -161,10 +153,17 @@
 }
 
 @layer components {
+  /* Patches Tailwind's auto-generated `.font-display` utility (font-family
+   * only) with a heavier default weight — Inter at regular (400) reads too
+   * thin for titles, and `font-display` is used on plain <p>/<div> as often
+   * as on real heading tags, so a tag selector alone wouldn't cover it. */
+  .font-display {
+    font-weight: 600;
+  }
+
   .text-display {
-    font-family: "Fraunces", serif;
-    font-variation-settings: "SOFT" 50, "WONK" 1;
-    font-weight: 400;
+    font-family: "Inter", system-ui, sans-serif;
+    font-weight: 600;
   }
 
   .text-mono {
