@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import {
-  LayoutDashboard,
   CheckCircle2,
   Calendar,
   Repeat,
@@ -22,13 +21,13 @@ import { QUICK_ADD } from "@/lib/quickAdd";
 
 /**
  * Mobile-only bottom tab bar, replacing the hamburger drawer as the primary
- * way to move around on a phone. Início/Agenda/Hábitos/Calendário sit
- * directly on the bar (Hábitos pinned per user request); Metas/Projetos/Mapa
- * Mental live behind "Mais". The center button is a raised quick-add, not a
- * nav destination. Hidden from `md` up, where the sidebar rail takes over.
+ * way to move around on a phone. Início/home now lives behind the logo mark
+ * in the header (see AppLayout.tsx) instead of a bar slot. Agenda/Hábitos/
+ * Calendário sit directly on the bar; Metas/Projetos/Mapa Mental live behind
+ * "Mais". The center button is a raised quick-add, not a nav destination.
+ * Hidden from `md` up, where the sidebar rail takes over.
  */
 const mainTabs = [
-  { to: "/", label: "Início", icon: LayoutDashboard, end: true },
   { to: "/agenda", label: "Agenda", icon: CheckCircle2, end: false },
   { to: "/habitos", label: "Hábitos", icon: Repeat, end: false },
 ];
