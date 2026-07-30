@@ -2,6 +2,7 @@ import { StateCreator } from "zustand";
 import { User, UserData, emptyUserData } from "../types";
 import { supabase } from "@/integrations/supabase/client";
 import { CoreState, scheduleCloudSave, writeCache } from "../core";
+import { pruneCompletedTasks } from "@/lib/tasks";
 
 /**
  * Some upstream error shapes (rate limits, gateway failures, non-standard
@@ -153,6 +154,7 @@ export const createAuthSlice: StateCreator<
         supabase.from("user_data").select("data").eq("user_id", userId).maybeSingle(),
       ]);
       const cloud = (row?.data as unknown as UserData) ?? null;
+      let tasksWerePruned = false;
       set((s) => {
         const base = emptyUserData();
         // Deep-merge notificationPrefs/categories specifically, so a key
@@ -173,16 +175,23 @@ export const createAuthSlice: StateCreator<
               },
             }
           : (s.data[userId] ?? base);
+        // Sweep completed tasks past their 3-day grace window on every load
+        // — the only reliable point to run this without a server-side cron.
+        const prunedTasks = pruneCompletedTasks(merged.tasks);
+        tasksWerePruned = prunedTasks.length !== merged.tasks.length;
+        const final = tasksWerePruned ? { ...merged, tasks: prunedTasks } : merged;
         return {
           hydrated: true,
-          data: { ...s.data, [userId]: merged },
+          data: { ...s.data, [userId]: final },
           users: s.users.map((u) =>
             u.id === userId ? { ...u, name: profile?.name || u.name } : u,
           ),
         };
       });
       // If cloud was empty but local had data, push it up so nothing is lost.
-      if ((!cloud || !Object.keys(cloud).length) && get().data[userId]) {
+      // Also push back up if pruning just changed the data, so the deletion
+      // sticks in the cloud instead of the old tasks reappearing next sync.
+      if (((!cloud || !Object.keys(cloud).length) || tasksWerePruned) && get().data[userId]) {
         scheduleCloudSave(userId, get().data[userId]);
       }
       writeCache({

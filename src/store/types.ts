@@ -41,6 +41,10 @@ export interface Task extends NotifyOverride {
   /** Minutes; used to size this task's block in the Cronograma timeline. Absent = default block height. */
   duration?: number;
   done: boolean;
+  /** ISO timestamp set when `done` flips to true; cleared when unmarked.
+   * Drives the 3-day grace window before a completed task is auto-deleted
+   * (see src/lib/tasks.ts) so "Todas" doesn't accumulate forever. */
+  completedAt?: string;
   notes?: string;
 }
 

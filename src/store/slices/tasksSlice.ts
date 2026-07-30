@@ -39,7 +39,11 @@ export const createTasksSlice = (
     set((s) =>
       mutate(s, (d) => ({
         ...d,
-        tasks: d.tasks.map((t) => (t.id === id ? { ...t, done: !t.done } : t)),
+        tasks: d.tasks.map((t) => {
+          if (t.id !== id) return t;
+          const done = !t.done;
+          return { ...t, done, completedAt: done ? new Date().toISOString() : undefined };
+        }),
       })),
     );
 
