@@ -39,7 +39,7 @@ const moreTabs = [
 ];
 
 const tabCls = (isActive: boolean) =>
-  `flex flex-col items-center gap-1 px-0.5 py-2 text-[10px] font-medium transition-colors ${
+  `flex w-full flex-col items-center gap-1 px-0.5 py-2 text-[10px] font-medium transition-colors ${
     isActive ? "text-primary-glow" : "text-muted-foreground hover:text-foreground"
   }`;
 
