@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { BottomNav } from "@/components/BottomNav";
+import { LumenMark } from "@/components/LumenMark";
 import { LogOut, WifiOff, BellRing } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
@@ -56,6 +57,15 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 the mobile navigation entry point, so the trigger only shows
                 where the sidebar rail is actually visible (md+). */}
             <SidebarTrigger className="hidden text-muted-foreground hover:text-foreground md:inline-flex" />
+
+            {/* Mobile-only: home now lives here instead of a bottom-bar slot. */}
+            <button
+              onClick={() => navigate("/")}
+              aria-label="Início"
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-primary/40 bg-gradient-to-br from-background to-secondary/60 text-primary-glow shadow-glow transition-transform active:scale-95 md:hidden"
+            >
+              <LumenMark size={20} />
+            </button>
 
             <div className="ml-auto flex items-center gap-2">
               {!online && (
