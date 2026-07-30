@@ -19,3 +19,28 @@ export function formatDeadline(deadline?: string): string {
 export function capitalizeWords(value: string): string {
   return value.replace(/\b\p{L}/gu, (c) => c.toUpperCase());
 }
+
+const pad = (n: number) => String(n).padStart(2, "0");
+const toDateKey = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+/**
+ * Advances a "YYYY-MM-DD" date by one recurrence period, for auto-generating
+ * a recurring task's next occurrence. Monthly uses a month INDEX (not
+ * Date#setMonth) to avoid day-of-month rollover near month-end — see
+ * src/lib/habits.ts for the same bug fixed the same way for habit streaks —
+ * and clamps to the target month's last day (e.g. Jan 31 → Feb 28/29).
+ */
+export function nextRecurrenceDate(
+  dateStr: string,
+  freq: "daily" | "weekly" | "monthly",
+): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  if (freq === "daily") return toDateKey(new Date(y, m - 1, d + 1));
+  if (freq === "weekly") return toDateKey(new Date(y, m - 1, d + 7));
+
+  const idx = y * 12 + (m - 1) + 1;
+  const ny = Math.floor(idx / 12);
+  const nm = idx - ny * 12;
+  const lastDay = new Date(ny, nm + 1, 0).getDate();
+  return toDateKey(new Date(ny, nm, Math.min(d, lastDay)));
+}

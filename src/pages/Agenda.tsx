@@ -3,7 +3,7 @@ import { SectionHeader } from "@/components/SectionHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CheckCircle2, Circle, Plus, Trash2, Pencil } from "lucide-react";
+import { CheckCircle2, Circle, Plus, Trash2, Pencil, Flag, Repeat } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -12,11 +12,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { CreatableSelect } from "@/components/CreatableSelect";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { TagMultiSelect } from "@/components/TagMultiSelect";
 import { NotifyField } from "@/components/NotifyField";
 import { useCustomOptions } from "@/hooks/use-custom-options";
+import { useConfirmDelete } from "@/hooks/use-confirm-delete";
 import { useAppStore, useUserData, todayKey, dateKey } from "@/store/useAppStore";
-import { Task, NotifyLeadUnit } from "@/store/types";
+import { Task, NotifyLeadUnit, TaskPriority, TaskRecurrence } from "@/store/types";
+import { itemTags } from "@/lib/tags";
 import { toast } from "sonner";
 
 const tagColor: Record<string, string> = {
@@ -30,6 +33,18 @@ const tagColor: Record<string, string> = {
 
 const TAGS = ["Foco", "Trabalho", "Reunião", "Hábito", "Saúde", "Pessoal"];
 
+const PRIORITY_STYLE: Record<TaskPriority, string> = {
+  high: "text-destructive",
+  medium: "text-warning",
+  low: "text-muted-foreground",
+};
+
+const RECURRENCE_LABEL: Record<TaskRecurrence, string> = {
+  daily: "Repete diariamente",
+  weekly: "Repete semanalmente",
+  monthly: "Repete mensalmente",
+};
+
 function TaskDialog({
   initial,
   onSave,
@@ -40,9 +55,11 @@ function TaskDialog({
   onSave: (t: {
     time: string;
     title: string;
-    tag: string;
+    tags: string[];
     date: string;
     notes?: string;
+    priority?: TaskPriority;
+    recurrence?: TaskRecurrence;
     notify?: boolean;
     notifyLeadValue?: number;
     notifyLeadUnit?: NotifyLeadUnit;
@@ -53,8 +70,10 @@ function TaskDialog({
   const [open, setOpen] = useState(false);
   const [text, setText] = useState(initial?.title ?? "");
   const [time, setTime] = useState(initial?.time && initial.time !== "—" ? initial.time : "");
-  const [tag, setTag] = useState(initial?.tag ?? "Foco");
+  const [tags, setTags] = useState<string[]>(initial ? itemTags(initial) : []);
   const [date, setDate] = useState(initial?.date ?? todayKey());
+  const [priority, setPriority] = useState<TaskPriority | "none">(initial?.priority ?? "none");
+  const [recurrence, setRecurrence] = useState<TaskRecurrence | "none">(initial?.recurrence ?? "none");
   const [notify, setNotify] = useState(initial?.notify !== false);
   const [notifyLeadValue, setNotifyLeadValue] = useState<number | undefined>(initial?.notifyLeadValue);
   const [notifyLeadUnit, setNotifyLeadUnit] = useState<NotifyLeadUnit>(initial?.notifyLeadUnit ?? "minutes");
@@ -74,8 +93,10 @@ function TaskDialog({
     onSave({
       title: text.trim(),
       time: time || "—",
-      tag,
+      tags,
       date,
+      priority: priority === "none" ? undefined : priority,
+      recurrence: recurrence === "none" ? undefined : recurrence,
       notify,
       notifyLeadValue,
       notifyLeadUnit,
@@ -84,6 +105,9 @@ function TaskDialog({
     if (!initial) {
       setText("");
       setTime("");
+      setTags([]);
+      setPriority("none");
+      setRecurrence("none");
     }
   };
 
@@ -109,11 +133,51 @@ function TaskDialog({
               <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
             </div>
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                Prioridade
+              </Label>
+              <Select
+                value={priority}
+                onValueChange={(v) => setPriority(v as TaskPriority | "none")}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sem prioridade</SelectItem>
+                  <SelectItem value="high">Alta</SelectItem>
+                  <SelectItem value="medium">Média</SelectItem>
+                  <SelectItem value="low">Baixa</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                Repetir
+              </Label>
+              <Select
+                value={recurrence}
+                onValueChange={(v) => setRecurrence(v as TaskRecurrence | "none")}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Não repetir</SelectItem>
+                  <SelectItem value="daily">Diariamente</SelectItem>
+                  <SelectItem value="weekly">Semanalmente</SelectItem>
+                  <SelectItem value="monthly">Mensalmente</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
           <div className="space-y-1.5">
-            <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Categoria</Label>
-            <CreatableSelect
-              value={tag}
-              onChange={setTag}
+            <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Tags</Label>
+            <TagMultiSelect
+              value={tags}
+              onChange={setTags}
               options={tagOptions}
               onCreate={addTagOption}
               customOptions={customTags}
@@ -149,6 +213,7 @@ export default function Agenda() {
   const toggleTask = useAppStore((s) => s.toggleTask);
   const removeTask = useAppStore((s) => s.removeTask);
   const updateTask = useAppStore((s) => s.updateTask);
+  const { requestDelete, dialog } = useConfirmDelete();
 
   const [filter, setFilter] = useState<"hoje" | "semana" | "todas">("hoje");
 
@@ -225,21 +290,42 @@ export default function Agenda() {
                   )}
                 </button>
                 <span className="text-mono w-14 text-xs text-muted-foreground">{t.time}</span>
-                <div className="flex-1">
-                  <p className={`text-sm ${t.done ? "text-muted-foreground line-through" : ""}`}>
-                    {t.title}
+                <div className="min-w-0 flex-1">
+                  <p
+                    className={`flex items-center gap-1.5 text-sm ${
+                      t.done ? "text-muted-foreground line-through" : ""
+                    }`}
+                  >
+                    {t.priority && (
+                      <Flag
+                        className={`h-3 w-3 shrink-0 ${PRIORITY_STYLE[t.priority]}`}
+                        fill="currentColor"
+                      />
+                    )}
+                    <span className="truncate">{t.title}</span>
+                    {t.recurrence && (
+                      <Repeat
+                        className="h-3 w-3 shrink-0 text-muted-foreground"
+                        aria-label={RECURRENCE_LABEL[t.recurrence]}
+                      />
+                    )}
                   </p>
                   {t.date !== todayKey() && (
                     <p className="text-mono text-[10px] text-muted-foreground/60">{t.date}</p>
                   )}
                 </div>
-                <span
-                  className={`hidden rounded-full border px-2.5 py-0.5 text-[10px] uppercase tracking-wider md:inline ${
-                    tagColor[t.tag] ?? "border-border text-muted-foreground"
-                  }`}
-                >
-                  {t.tag}
-                </span>
+                <div className="hidden flex-wrap justify-end gap-1 md:flex">
+                  {itemTags(t).map((tg) => (
+                    <span
+                      key={tg}
+                      className={`rounded-full border px-2.5 py-0.5 text-[10px] uppercase tracking-wider ${
+                        tagColor[tg] ?? "border-border text-muted-foreground"
+                      }`}
+                    >
+                      {tg}
+                    </span>
+                  ))}
+                </div>
                 <TaskDialog
                   title="Editar tarefa"
                   initial={t}
@@ -251,7 +337,12 @@ export default function Agenda() {
                   }
                 />
                 <button
-                  onClick={() => removeTask(t.id)}
+                  onClick={() =>
+                    requestDelete(() => removeTask(t.id), {
+                      title: "Excluir tarefa?",
+                      description: `"${t.title}" será removida permanentemente.`,
+                    })
+                  }
                   className="opacity-100 transition-opacity hover:text-destructive md:opacity-0 md:group-hover:opacity-100"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -261,6 +352,7 @@ export default function Agenda() {
           </ul>
         )}
       </div>
+      {dialog}
     </div>
   );
 }

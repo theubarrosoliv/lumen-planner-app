@@ -13,6 +13,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { NotifyField } from "@/components/NotifyField";
+import { useConfirmDelete } from "@/hooks/use-confirm-delete";
 import { useAppStore, useUserData } from "@/store/useAppStore";
 import { toast } from "sonner";
 import { Project, ProjectTask, NotifyLeadUnit } from "@/store/types";
@@ -218,6 +219,7 @@ export default function Projects() {
   const updateProjectTask = useAppStore((s) => s.updateProjectTask);
   const toggleProjectTask = useAppStore((s) => s.toggleProjectTask);
   const removeProjectTask = useAppStore((s) => s.removeProjectTask);
+  const { requestDelete, dialog } = useConfirmDelete();
 
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [newTask, setNewTask] = useState<Record<string, { title: string; deadline: string }>>({});
@@ -289,7 +291,12 @@ export default function Projects() {
                       }
                     />
                     <button
-                      onClick={() => removeProject(p.id)}
+                      onClick={() =>
+                        requestDelete(() => removeProject(p.id), {
+                          title: "Excluir projeto?",
+                          description: `"${p.name}" e suas ${p.tasks.length} tarefa(s) serão perdidas.`,
+                        })
+                      }
                       className="opacity-100 transition-opacity hover:text-destructive md:opacity-0 md:group-hover:opacity-100"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -371,7 +378,12 @@ export default function Projects() {
                           }
                         />
                         <button
-                          onClick={() => removeProjectTask(p.id, t.id)}
+                          onClick={() =>
+                            requestDelete(() => removeProjectTask(p.id, t.id), {
+                              title: "Excluir tarefa?",
+                              description: `"${t.title}" será removida permanentemente.`,
+                            })
+                          }
                           className="opacity-100 transition-opacity hover:text-destructive md:opacity-0 md:group-hover/t:opacity-100"
                         >
                           <Trash2 className="h-3 w-3" />
@@ -416,6 +428,7 @@ export default function Projects() {
           })}
         </div>
       )}
+      {dialog}
     </div>
   );
 }

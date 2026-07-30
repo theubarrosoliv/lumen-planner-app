@@ -2,6 +2,7 @@ import { StateCreator } from "zustand";
 import { Task } from "../types";
 import { CoreState, mutate, uid } from "../core";
 import { notifyLocal } from "@/lib/localNotify";
+import { nextRecurrenceDate } from "@/lib/date";
 
 export interface TasksSlice {
   addTask: (t: Omit<Task, "id" | "done">) => void;
@@ -44,6 +45,11 @@ export const createTasksSlice = (
 
     if (before && !before.done) {
       notifyLocal("🎉 Tarefa concluída", before.title);
+
+      if (before.recurrence) {
+        const { id: _id, done: _done, ...rest } = before;
+        get().addTask({ ...rest, date: nextRecurrenceDate(before.date, before.recurrence) });
+      }
     }
   }),
   removeTask: persist((id: string) =>

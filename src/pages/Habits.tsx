@@ -30,6 +30,7 @@ import {
 import { cn } from "@/lib/utils";
 import { HabitsCharts } from "@/components/DashboardCharts";
 import { NotifyField } from "@/components/NotifyField";
+import { useConfirmDelete } from "@/hooks/use-confirm-delete";
 
 function HabitDialog({
   trigger,
@@ -131,6 +132,7 @@ export default function Habits() {
   const updateHabit = useAppStore((s) => s.updateHabit);
   const removeHabit = useAppStore((s) => s.removeHabit);
   const toggleHabitPeriod = useAppStore((s) => s.toggleHabitPeriod);
+  const { requestDelete, dialog } = useConfirmDelete();
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -226,7 +228,12 @@ export default function Habits() {
                       }
                     />
                     <button
-                      onClick={() => removeHabit(h.id)}
+                      onClick={() =>
+                        requestDelete(() => removeHabit(h.id), {
+                          title: "Excluir hábito?",
+                          description: `"${h.name}" e todo o histórico de streak serão perdidos.`,
+                        })
+                      }
                       className="opacity-100 transition-opacity hover:text-destructive md:opacity-0 md:group-hover:opacity-100"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -305,6 +312,7 @@ export default function Habits() {
       )}
 
       {habits.length > 0 && <BackdateFab habits={habits} />}
+      {dialog}
     </div>
   );
 }

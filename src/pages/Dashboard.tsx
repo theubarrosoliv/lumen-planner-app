@@ -27,6 +27,7 @@ import {
 } from "@/lib/habits";
 import { formatDeadline, capitalizeWords } from "@/lib/date";
 import { QUICK_ADD } from "@/lib/quickAdd";
+import { itemTags } from "@/lib/tags";
 
 
 export default function Dashboard() {
@@ -182,9 +183,11 @@ export default function Dashboard() {
                     <p className={`flex-1 text-sm transition-all ${task.done ? "text-muted-foreground line-through" : "text-foreground"}`}>
                       {task.title}
                     </p>
-                    <span className="hidden rounded-full border border-border bg-secondary/60 px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground md:inline">
-                      {task.tag}
-                    </span>
+                    {itemTags(task)[0] && (
+                      <span className="hidden rounded-full border border-border bg-secondary/60 px-2.5 py-0.5 text-[10px] uppercase tracking-wider text-muted-foreground md:inline">
+                        {itemTags(task)[0]}
+                      </span>
+                    )}
                   </li>
                 ))}
               </ul>
