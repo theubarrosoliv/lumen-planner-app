@@ -38,6 +38,8 @@ export interface Task extends NotifyOverride {
   priority?: TaskPriority;
   /** When set, completing the task creates its next occurrence automatically. */
   recurrence?: TaskRecurrence;
+  /** Minutes; used to size this task's block in the Cronograma timeline. Absent = default block height. */
+  duration?: number;
   done: boolean;
   notes?: string;
 }
@@ -97,6 +99,8 @@ export interface CalEvent extends NotifyOverride {
   title: string;
   color: string; // bg-* class
   tags?: string[];
+  /** Minutes; used to size this event's block in the Cronograma timeline. Absent = default block height. */
+  duration?: number;
 }
 
 export interface MindNode {

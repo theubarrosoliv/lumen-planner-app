@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { QUICK_ADD } from "@/lib/quickAdd";
+import { GlobalSearch } from "@/components/GlobalSearch";
 
 /**
  * Mobile-only bottom tab bar, replacing the hamburger drawer as the primary
@@ -91,7 +92,11 @@ export function BottomNav() {
           </NavLink>
         </li>
 
-        <li className="flex-1">
+        <li className="relative flex-1">
+          {/* Global search: raised bubble above "Mais", mirroring the center
+              "+" button's floating treatment but secondary/smaller since
+              search isn't the primary action. */}
+          <GlobalSearch />
           <button onClick={() => setMoreOpen(true)} className={tabCls(moreActive)}>
             <MoreHorizontal className="h-[22px] w-[22px] shrink-0" />
             <span className="max-w-full truncate">Mais</span>

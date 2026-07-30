@@ -17,6 +17,7 @@ import Projects from "./pages/Projects";
 import MindMaps from "./pages/MindMaps";
 import MindMapPage from "./pages/MindMap";
 import Notifications from "./pages/Notifications";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -46,6 +47,7 @@ const App = () => (
             <Route path="/mapas" element={wrap(<MindMaps />)} />
             <Route path="/mapas/:id" element={wrap(<MindMapPage />)} />
             <Route path="/notificacoes" element={wrap(<Notifications />)} />
+            <Route path="/configuracoes" element={wrap(<Settings />)} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

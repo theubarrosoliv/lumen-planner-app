@@ -1,6 +1,7 @@
 import { SectionHeader } from "@/components/SectionHeader";
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Plus, Trash2, Pencil } from "lucide-react";
+import { ScheduleView } from "@/components/ScheduleView";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -37,7 +38,7 @@ const COLORS = [
   { v: "bg-destructive", label: "Vermelho" },
 ];
 
-function EventDialog({
+export function EventDialog({
   trigger,
   title: dialogTitle,
   initial,
@@ -54,6 +55,7 @@ function EventDialog({
     time?: string;
     color: string;
     tags: string[];
+    duration?: number;
     notify?: boolean;
     notifyLeadValue?: number;
     notifyLeadUnit?: NotifyLeadUnit;
@@ -64,6 +66,7 @@ function EventDialog({
   const [color, setColor] = useState(initial?.color ?? "bg-primary");
   const [date, setDate] = useState(initial?.date ?? defaultDate ?? todayKey());
   const [time, setTime] = useState(initial?.time ?? "");
+  const [duration, setDuration] = useState<number | undefined>(initial?.duration);
   const [tags, setTags] = useState<string[]>(initial ? itemTags(initial) : []);
   const [notify, setNotify] = useState(initial?.notify !== false);
   const [notifyLeadValue, setNotifyLeadValue] = useState<number | undefined>(initial?.notifyLeadValue);
@@ -84,6 +87,7 @@ function EventDialog({
       time: time || undefined,
       color,
       tags,
+      duration,
       notify,
       notifyLeadValue,
       notifyLeadUnit,
@@ -93,6 +97,7 @@ function EventDialog({
       setTitle("");
       setTime("");
       setTags([]);
+      setDuration(undefined);
     }
   };
 
@@ -108,16 +113,31 @@ function EventDialog({
             <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Título</Label>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Data</Label>
               <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                Horário <span className="normal-case tracking-normal">(opcional)</span>
+                Horário <span className="normal-case tracking-normal">(opc.)</span>
               </Label>
               <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                Duração (min)
+              </Label>
+              <Input
+                type="number"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                min={0}
+                step={5}
+                placeholder="60"
+                value={duration ?? ""}
+                onChange={(e) => setDuration(e.target.value === "" ? undefined : Number(e.target.value))}
+              />
             </div>
           </div>
           <div className="space-y-1.5">
@@ -178,9 +198,12 @@ export default function CalendarPage() {
   const addEvent = useAppStore((s) => s.addEvent);
   const updateEvent = useAppStore((s) => s.updateEvent);
   const removeEvent = useAppStore((s) => s.removeEvent);
+  const toggleTask = useAppStore((s) => s.toggleTask);
   const { requestDelete, dialog } = useConfirmDelete();
 
   const [selected, setSelected] = useState<string>(todayKey());
+  const [view, setView] = useState<"mes" | "cronograma">("mes");
+  const [scheduleDate, setScheduleDate] = useState<string>(todayKey());
 
   const grid = useMemo(() => {
     const year = cursor.getFullYear();
@@ -226,6 +249,48 @@ export default function CalendarPage() {
         }
       />
 
+      <div className="mb-4 flex gap-1 rounded-lg border border-border bg-secondary/40 p-1 w-fit">
+        {(
+          [
+            { key: "mes", label: "Mês" },
+            { key: "cronograma", label: "Cronograma" },
+          ] as const
+        ).map((v) => (
+          <button
+            key={v.key}
+            onClick={() => {
+              setView(v.key);
+              if (v.key === "cronograma") setScheduleDate(todayKey());
+            }}
+            className={`rounded-md px-3 py-1 text-xs uppercase tracking-[0.2em] transition-all ${
+              view === v.key
+                ? "bg-gradient-primary text-primary-foreground shadow-soft"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {v.label}
+          </button>
+        ))}
+      </div>
+
+      {view === "cronograma" ? (
+        <ScheduleView
+          date={scheduleDate}
+          onDateChange={setScheduleDate}
+          tasks={tasks}
+          events={events}
+          onToggleTask={toggleTask}
+          renderEventTrigger={(event, block) => (
+            <EventDialog
+              key={event.id}
+              title="Editar evento"
+              initial={event}
+              onSave={(v) => updateEvent(event.id, v)}
+              trigger={block}
+            />
+          )}
+        />
+      ) : (
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="rounded-2xl border border-border bg-gradient-card p-4 md:p-6">
           <div className="mb-6 flex items-center justify-between">
@@ -382,6 +447,7 @@ export default function CalendarPage() {
           </div>
         </aside>
       </div>
+      )}
       {dialog}
     </div>
   );
