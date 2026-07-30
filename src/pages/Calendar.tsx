@@ -113,7 +113,7 @@ export function EventDialog({
             <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Título</Label>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Data</Label>
               <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
@@ -124,21 +124,21 @@ export function EventDialog({
               </Label>
               <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                Duração (min)
-              </Label>
-              <Input
-                type="number"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                min={0}
-                step={5}
-                placeholder="60"
-                value={duration ?? ""}
-                onChange={(e) => setDuration(e.target.value === "" ? undefined : Number(e.target.value))}
-              />
-            </div>
+          </div>
+          <div className="max-w-[10rem] space-y-1.5">
+            <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+              Duração (min)
+            </Label>
+            <Input
+              type="number"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              min={0}
+              step={5}
+              placeholder="60"
+              value={duration ?? ""}
+              onChange={(e) => setDuration(e.target.value === "" ? undefined : Number(e.target.value))}
+            />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Cor</Label>
