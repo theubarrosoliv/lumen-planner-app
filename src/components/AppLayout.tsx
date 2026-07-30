@@ -4,10 +4,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { BottomNav } from "@/components/BottomNav";
 import { LumenMark } from "@/components/LumenMark";
-import { GlobalSearch } from "@/components/GlobalSearch";
-import { LogOut, WifiOff, BellRing } from "lucide-react";
-import { ThemeToggle } from "@/components/ThemeToggle";
-import { Button } from "@/components/ui/button";
+import { LogOut, WifiOff, Settings } from "lucide-react";
 import { useAppStore } from "@/store/useAppStore";
 import {
   DropdownMenu,
@@ -78,8 +75,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
               <GlobalSearch />
 
-              <ThemeToggle />
-
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-primary text-xs font-medium text-primary-foreground shadow-soft transition-transform hover:scale-105">
@@ -89,17 +84,20 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel>
                     <div className="flex flex-col">
+                      <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                        Perfil
+                      </span>
                       <span className="text-sm">{user?.name}</span>
                       <span className="text-xs text-muted-foreground">{user?.email}</span>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
-                    onClick={() => navigate("/notificacoes")}
+                    onClick={() => navigate("/configuracoes")}
                     className="cursor-pointer"
                   >
-                    <BellRing className="mr-2 h-4 w-4" />
-                    Notificações
+                    <Settings className="mr-2 h-4 w-4" />
+                    Configurações
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem

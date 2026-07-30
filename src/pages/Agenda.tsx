@@ -20,6 +20,7 @@ import { useConfirmDelete } from "@/hooks/use-confirm-delete";
 import { useAppStore, useUserData, todayKey, dateKey } from "@/store/useAppStore";
 import { Task, NotifyLeadUnit, TaskPriority, TaskRecurrence } from "@/store/types";
 import { itemTags } from "@/lib/tags";
+import { PRIORITY_STYLE, PRIORITY_ORDER } from "@/lib/priority";
 import { toast } from "sonner";
 
 const tagColor: Record<string, string> = {
@@ -32,12 +33,6 @@ const tagColor: Record<string, string> = {
 };
 
 const TAGS = ["Foco", "Trabalho", "Reunião", "Hábito", "Saúde", "Pessoal"];
-
-const PRIORITY_STYLE: Record<TaskPriority, string> = {
-  high: "text-destructive",
-  medium: "text-warning",
-  low: "text-muted-foreground",
-};
 
 const RECURRENCE_LABEL: Record<TaskRecurrence, string> = {
   daily: "Repete diariamente",
@@ -60,6 +55,7 @@ function TaskDialog({
     notes?: string;
     priority?: TaskPriority;
     recurrence?: TaskRecurrence;
+    duration?: number;
     notify?: boolean;
     notifyLeadValue?: number;
     notifyLeadUnit?: NotifyLeadUnit;
@@ -74,6 +70,7 @@ function TaskDialog({
   const [date, setDate] = useState(initial?.date ?? todayKey());
   const [priority, setPriority] = useState<TaskPriority | "none">(initial?.priority ?? "none");
   const [recurrence, setRecurrence] = useState<TaskRecurrence | "none">(initial?.recurrence ?? "none");
+  const [duration, setDuration] = useState<number | undefined>(initial?.duration);
   const [notify, setNotify] = useState(initial?.notify !== false);
   const [notifyLeadValue, setNotifyLeadValue] = useState<number | undefined>(initial?.notifyLeadValue);
   const [notifyLeadUnit, setNotifyLeadUnit] = useState<NotifyLeadUnit>(initial?.notifyLeadUnit ?? "minutes");
@@ -97,6 +94,7 @@ function TaskDialog({
       date,
       priority: priority === "none" ? undefined : priority,
       recurrence: recurrence === "none" ? undefined : recurrence,
+      duration,
       notify,
       notifyLeadValue,
       notifyLeadUnit,
@@ -108,6 +106,7 @@ function TaskDialog({
       setTags([]);
       setPriority("none");
       setRecurrence("none");
+      setDuration(undefined);
     }
   };
 
@@ -123,7 +122,7 @@ function TaskDialog({
             <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Título</Label>
             <Input value={text} onChange={(e) => setText(e.target.value)} autoFocus />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
               <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Data</Label>
               <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
@@ -131,6 +130,21 @@ function TaskDialog({
             <div className="space-y-1.5">
               <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Hora</Label>
               <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                Duração (min)
+              </Label>
+              <Input
+                type="number"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                min={0}
+                step={5}
+                placeholder="60"
+                value={duration ?? ""}
+                onChange={(e) => setDuration(e.target.value === "" ? undefined : Number(e.target.value))}
+              />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -216,6 +230,7 @@ export default function Agenda() {
   const { requestDelete, dialog } = useConfirmDelete();
 
   const [filter, setFilter] = useState<"hoje" | "semana" | "todas">("hoje");
+  const [sort, setSort] = useState<"padrao" | "horario" | "prioridade">("horario");
 
   const today = new Date();
   const filtered = tasks
@@ -229,7 +244,16 @@ export default function Agenda() {
       }
       return true;
     })
-    .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+    .sort((a, b) => {
+      if (sort === "horario") return (a.date + a.time).localeCompare(b.date + b.time);
+      if (sort === "prioridade") {
+        return PRIORITY_ORDER[a.priority ?? "none"] - PRIORITY_ORDER[b.priority ?? "none"];
+      }
+      // "padrao": tasks are appended on creation, so the array's own order
+      // already is creation order — Array#sort is stable, so returning 0
+      // here just keeps that order instead of re-sorting.
+      return 0;
+    });
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -250,20 +274,33 @@ export default function Agenda() {
         }
       />
 
-      <div className="mb-4 flex gap-1 rounded-lg border border-border bg-secondary/40 p-1 w-fit">
-        {(["hoje", "semana", "todas"] as const).map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`rounded-md px-3 py-1 text-xs uppercase tracking-[0.2em] transition-all ${
-              filter === f
-                ? "bg-gradient-primary text-primary-foreground shadow-soft"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {f}
-          </button>
-        ))}
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex gap-1 rounded-lg border border-border bg-secondary/40 p-1 w-fit">
+          {(["hoje", "semana", "todas"] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`rounded-md px-3 py-1 text-xs uppercase tracking-[0.2em] transition-all ${
+                filter === f
+                  ? "bg-gradient-primary text-primary-foreground shadow-soft"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+
+        <Select value={sort} onValueChange={(v) => setSort(v as typeof sort)}>
+          <SelectTrigger className="h-8 w-[9.5rem] text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="padrao">Padrão</SelectItem>
+            <SelectItem value="horario">Horário</SelectItem>
+            <SelectItem value="prioridade">Prioridade</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="rounded-2xl border border-border bg-gradient-card">

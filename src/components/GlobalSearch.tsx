@@ -12,9 +12,11 @@ import {
 import { useUserData } from "@/store/useAppStore";
 
 /**
- * App-wide quick jump: Cmd/Ctrl+K (desktop) or the search icon in the header
- * (any size) opens a fuzzy search across every item's title. Selecting one
+ * App-wide quick jump: Cmd/Ctrl+K, or the raised bubble above "Mais" in the
+ * bottom nav, opens a fuzzy search across every item's title. Selecting one
  * navigates to its section — there's no per-item route to deep-link into.
+ * Rendered inside BottomNav.tsx (which stays mounted, just visually hidden
+ * via `md:hidden`, so the Cmd/Ctrl+K shortcut keeps working on desktop too).
  */
 export function GlobalSearch() {
   const [open, setOpen] = useState(false);
@@ -42,12 +44,9 @@ export function GlobalSearch() {
       <button
         onClick={() => setOpen(true)}
         aria-label="Buscar"
-        className="flex h-9 items-center gap-1.5 rounded-lg px-2 text-muted-foreground transition-colors hover:text-foreground"
+        className="absolute -top-5 left-1/2 z-10 flex h-10 w-10 -translate-x-1/2 items-center justify-center rounded-full border border-border bg-background text-muted-foreground shadow-soft transition-transform hover:text-foreground active:scale-95"
       >
-        <Search className="h-[18px] w-[18px]" />
-        <kbd className="hidden rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground/70 md:inline">
-          ⌘K
-        </kbd>
+        <Search className="h-4 w-4" />
       </button>
       <CommandDialog open={open} onOpenChange={setOpen}>
         <CommandInput placeholder="Buscar tarefas, hábitos, metas, projetos, eventos…" />
