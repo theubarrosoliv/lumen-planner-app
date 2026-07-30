@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 import { isEmbeddedPreview } from "./lib/runtimeEnv";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 
 if (isEmbeddedPreview()) {
   // Strip any previously-installed SW + caches in preview/editor contexts.
@@ -39,7 +40,11 @@ if (isEmbeddedPreview()) {
   });
 }
 
-createRoot(document.getElementById("root")!).render(<App />);
+createRoot(document.getElementById("root")!).render(
+  <ErrorBoundary>
+    <App />
+  </ErrorBoundary>,
+);
 
 // Fade out the splash screen once the app is mounted. Only shown once per session.
 window.requestAnimationFrame(() => {
