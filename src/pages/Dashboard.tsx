@@ -21,6 +21,7 @@ import { useAppStore, useUserData, todayKey } from "@/store/useAppStore";
 import { Link, useNavigate } from "react-router-dom";
 import {
   FREQUENCY_LABEL,
+  activeStreakPeriods,
   currentPeriodKey,
   lastNPeriods,
   streakOf,
@@ -249,6 +250,7 @@ export default function Dashboard() {
                   const currentKey = currentPeriodKey(h);
                   const doneNow = !!h.completions[currentKey];
                   const periods = lastNPeriods(freq, 14);
+                  const activeMask = activeStreakPeriods(h, periods);
                   const ctaShort = doneNow
                     ? "✓ feito"
                     : freq === "daily"
@@ -276,7 +278,7 @@ export default function Dashboard() {
                       </div>
                       <div className="flex gap-1">
                         {periods.map((p, i) => {
-                          const filled = !!h.completions[p];
+                          const filled = activeMask[i];
                           return (
                             <div
                               key={i}
