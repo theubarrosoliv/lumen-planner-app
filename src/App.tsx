@@ -18,6 +18,7 @@ import MindMaps from "./pages/MindMaps";
 import MindMapPage from "./pages/MindMap";
 import Notifications from "./pages/Notifications";
 import Settings from "./pages/Settings";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -60,6 +61,7 @@ const App = () => (
               <Route path="/mapas/:id" element={<MindMapPage />} />
               <Route path="/notificacoes" element={<Notifications />} />
               <Route path="/configuracoes" element={<Settings />} />
+              <Route path="/perfil" element={<Profile />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>

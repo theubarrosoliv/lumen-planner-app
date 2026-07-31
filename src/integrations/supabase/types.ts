@@ -118,6 +118,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      delete_own_account: { Args: never; Returns: undefined }
       is_allowed_email_domain: { Args: { _email: string }; Returns: boolean }
     }
     Enums: {
