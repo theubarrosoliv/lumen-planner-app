@@ -28,6 +28,8 @@ export interface AuthSlice {
   verifySession: () => boolean;
   requestPasswordReset: (email: string) => Promise<{ ok: boolean; error?: string }>;
   updatePassword: (password: string) => Promise<{ ok: boolean; error?: string }>;
+  updateProfileName: (name: string) => Promise<{ ok: boolean; error?: string }>;
+  deleteAccount: () => Promise<{ ok: boolean; error?: string }>;
 
   // internal, wired up by the Supabase auth listener in useAppStore.ts
   _setSession: (userId: string | null, user?: Partial<User>) => void;
@@ -115,6 +117,33 @@ export const createAuthSlice: StateCreator<
     if (error) {
       return { ok: false, error: authErrorMessage(error, "Não foi possível redefinir a senha agora. Tente novamente.") };
     }
+    return { ok: true };
+  },
+
+  updateProfileName: async (name) => {
+    const trimmed = name.trim().slice(0, 80);
+    if (!trimmed) return { ok: false, error: "Informe um nome." };
+    const userId = get().currentUserId;
+    if (!userId) return { ok: false, error: "Sessão expirada." };
+    const { error } = await supabase.from("profiles").update({ name: trimmed }).eq("id", userId);
+    if (error) {
+      return { ok: false, error: authErrorMessage(error, "Não foi possível salvar o nome agora. Tente novamente.") };
+    }
+    set((s) => ({ users: s.users.map((u) => (u.id === userId ? { ...u, name: trimmed } : u)) }));
+    writeCache({ currentUserId: get().currentUserId, users: get().users, data: get().data });
+    return { ok: true };
+  },
+
+  deleteAccount: async () => {
+    const { error } = await supabase.rpc("delete_own_account");
+    if (error) {
+      return { ok: false, error: authErrorMessage(error, "Não foi possível excluir a conta agora. Tente novamente.") };
+    }
+    // The row behind this session is gone — sign out client-side too so no
+    // stale token/cache lingers, then clear local state the same way logout does.
+    await supabase.auth.signOut();
+    set({ currentUserId: null, hydrated: false });
+    writeCache({ currentUserId: null, users: get().users, data: get().data });
     return { ok: true };
   },
 

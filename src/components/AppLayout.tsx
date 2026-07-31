@@ -10,7 +10,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -82,7 +81,10 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>
+                  <DropdownMenuItem
+                    onClick={() => navigate("/perfil")}
+                    className="cursor-pointer"
+                  >
                     <div className="flex flex-col">
                       <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
                         Perfil
@@ -90,7 +92,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
                       <span className="text-sm">{user?.name}</span>
                       <span className="text-xs text-muted-foreground">{user?.email}</span>
                     </div>
-                  </DropdownMenuLabel>
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={() => navigate("/configuracoes")}
