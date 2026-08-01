@@ -20,6 +20,8 @@ import Notifications from "./pages/Notifications";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound.tsx";
+// TEMP: remove this import along with src/components/FirstLaunchGateTEMP.tsx
+import { FirstLaunchGate } from "@/components/FirstLaunchGateTEMP";
 
 const queryClient = new QueryClient();
 
@@ -46,26 +48,29 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/redefinir-senha" element={<ResetPassword />} />
-            <Route element={<AuthedLayout />}>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/agenda" element={<Agenda />} />
-              <Route path="/calendario" element={<CalendarPage />} />
-              <Route path="/habitos" element={<Habits />} />
-              <Route path="/metas" element={<Goals />} />
-              <Route path="/projetos" element={<Projects />} />
-              <Route path="/mapas" element={<MindMaps />} />
-              <Route path="/mapas/:id" element={<MindMapPage />} />
-              <Route path="/notificacoes" element={<Notifications />} />
-              <Route path="/configuracoes" element={<Settings />} />
-              <Route path="/perfil" element={<Profile />} />
-            </Route>
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
+        {/* TEMP: see FirstLaunchGateTEMP.tsx */}
+        <FirstLaunchGate>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/redefinir-senha" element={<ResetPassword />} />
+              <Route element={<AuthedLayout />}>
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/agenda" element={<Agenda />} />
+                <Route path="/calendario" element={<CalendarPage />} />
+                <Route path="/habitos" element={<Habits />} />
+                <Route path="/metas" element={<Goals />} />
+                <Route path="/projetos" element={<Projects />} />
+                <Route path="/mapas" element={<MindMaps />} />
+                <Route path="/mapas/:id" element={<MindMapPage />} />
+                <Route path="/notificacoes" element={<Notifications />} />
+                <Route path="/configuracoes" element={<Settings />} />
+                <Route path="/perfil" element={<Profile />} />
+              </Route>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </BrowserRouter>
+        </FirstLaunchGate>
       </TooltipProvider>
     </QueryClientProvider>
   </ThemeProvider>
