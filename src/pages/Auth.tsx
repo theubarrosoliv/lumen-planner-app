@@ -11,8 +11,6 @@ import {
   normalizeEmail,
   ALLOWED_PROVIDERS_MESSAGE,
 } from "@/lib/emailValidation";
-// TEMP: remove this import along with src/components/InstallPwaTutorialTEMP.tsx
-import { markFreshSignup } from "@/components/InstallPwaTutorialTEMP";
 
 type Mode = "login" | "signup" | "forgot";
 
@@ -79,7 +77,6 @@ export default function Auth() {
       return;
     }
     toast.success(mode === "signup" ? "Conta criada com sucesso" : "Bem-vindo de volta");
-    if (mode === "signup") markFreshSignup(); // TEMP: see InstallPwaTutorialTEMP.tsx
     navigate(location.state?.from ?? "/", { replace: true });
   };
 

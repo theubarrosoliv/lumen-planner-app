@@ -14,8 +14,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useEffect, useState } from "react";
-// TEMP: remove this import along with src/components/InstallPwaTutorialTEMP.tsx
-import { InstallPwaTutorial } from "@/components/InstallPwaTutorialTEMP";
 
 function useOnline() {
   const [online, setOnline] = useState(typeof navigator !== "undefined" ? navigator.onLine : true);
@@ -125,8 +123,6 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         {/* Mobile bottom tab bar (hidden on md+ where the sidebar takes over) */}
         <BottomNav />
       </div>
-      {/* TEMP: see InstallPwaTutorialTEMP.tsx */}
-      <InstallPwaTutorial />
     </SidebarProvider>
   );
 }
