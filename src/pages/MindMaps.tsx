@@ -12,6 +12,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useAppStore, useUserData } from "@/store/useAppStore";
+import { useConfirmDelete } from "@/hooks/use-confirm-delete";
+import { MindMapThumbnail } from "@/components/mindmap/MindMapThumbnail";
 import { toast } from "sonner";
 
 export default function MindMaps() {
@@ -21,6 +23,7 @@ export default function MindMaps() {
   const renameMindmap = useAppStore((s) => s.renameMindmap);
   const duplicateMindmap = useAppStore((s) => s.duplicateMindmap);
   const removeMindmap = useAppStore((s) => s.removeMindmap);
+  const { requestDelete, dialog: confirmDialog } = useConfirmDelete();
 
   const [renameTarget, setRenameTarget] = useState<{ id: string; name: string } | null>(null);
 
@@ -64,22 +67,25 @@ export default function MindMaps() {
             >
               <button
                 onClick={() => navigate(`/mapas/${m.id}`)}
-                className="text-left"
+                className="flex items-start justify-between gap-3 text-left"
               >
-                <div className="flex items-center gap-2 text-primary-glow">
-                  <Network className="h-4 w-4" />
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                    {m.nodes.length} {m.nodes.length === 1 ? "nó" : "nós"}
-                  </span>
+                <div>
+                  <div className="flex items-center gap-2 text-primary-glow">
+                    <Network className="h-4 w-4" />
+                    <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                      {m.nodes.length} {m.nodes.length === 1 ? "ideia" : "ideias"}
+                    </span>
+                  </div>
+                  <h3 className="mt-2 font-display text-xl leading-tight">{m.name}</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Criado em{" "}
+                    {new Date(m.createdAt).toLocaleDateString("pt-BR", {
+                      day: "2-digit",
+                      month: "short",
+                    })}
+                  </p>
                 </div>
-                <h3 className="mt-2 font-display text-xl leading-tight">{m.name}</h3>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Criado em{" "}
-                  {new Date(m.createdAt).toLocaleDateString("pt-BR", {
-                    day: "2-digit",
-                    month: "short",
-                  })}
-                </p>
+                <MindMapThumbnail nodes={m.nodes} />
               </button>
 
               <div className="mt-4 flex items-center gap-1 border-t border-border pt-3">
@@ -106,12 +112,15 @@ export default function MindMaps() {
                   size="sm"
                   variant="ghost"
                   className="ml-auto h-8 px-2 text-destructive hover:text-destructive"
-                  onClick={() => {
-                    if (confirm(`Excluir "${m.name}"?`)) {
-                      removeMindmap(m.id);
-                      toast.success("Mapa excluído");
-                    }
-                  }}
+                  onClick={() =>
+                    requestDelete(
+                      () => {
+                        removeMindmap(m.id);
+                        toast.success("Mapa excluído");
+                      },
+                      { title: `Excluir "${m.name}"?`, description: "Essa ação não pode ser desfeita." },
+                    )
+                  }
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>
@@ -154,6 +163,7 @@ export default function MindMaps() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {confirmDialog}
     </div>
   );
 }
