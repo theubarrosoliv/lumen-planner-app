@@ -7,22 +7,13 @@ import { Task, CalEvent } from "@/store/types";
 import { dateKey, todayKey } from "@/store/useAppStore";
 import { timeToMinutes, layoutTimeline } from "@/lib/timeline";
 import { PRIORITY_BLOCK_STYLE } from "@/lib/priority";
+import { formatLongDate } from "@/lib/date";
 import { cn } from "@/lib/utils";
 
 const HOUR_HEIGHT = 56; // px per hour
 const DEFAULT_TASK_DURATION = 30; // minutes, when the task has none set
 const DEFAULT_EVENT_DURATION = 60;
 const MIN_BLOCK_HEIGHT = 26; // px — keeps very short/zero-duration blocks tappable
-
-function fmtLongDate(key: string) {
-  const [y, m, d] = key.split("-").map(Number);
-  const label = new Date(y, m - 1, d).toLocaleDateString("pt-BR", {
-    weekday: "long",
-    day: "2-digit",
-    month: "long",
-  });
-  return label.charAt(0).toUpperCase() + label.slice(1);
-}
 
 function shiftDate(key: string, deltaDays: number): string {
   const [y, m, d] = key.split("-").map(Number);
@@ -96,7 +87,7 @@ export function ScheduleView({
   return (
     <div className="rounded-2xl border border-border bg-gradient-card p-4 md:p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-display text-xl md:text-2xl">{fmtLongDate(date)}</h2>
+        <h2 className="font-display text-xl md:text-2xl">{formatLongDate(date)}</h2>
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={() => onDateChange(shiftDate(date, -1))}>
             <ChevronLeft className="h-4 w-4" />
