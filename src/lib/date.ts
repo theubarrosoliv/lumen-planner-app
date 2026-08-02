@@ -34,6 +34,16 @@ const WEEKDAY_ABBR = ["", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
  * recurrence and habit frequency editors. */
 export const WEEKDAY_OPTIONS = [1, 2, 3, 4, 5, 6, 7].map((d) => ({ value: d, label: WEEKDAY_ABBR[d] }));
 
+/** Nearest date on/after `dateStr` (YYYY-MM-DD) whose ISO weekday is `weekday`. */
+export function nearestMatchingWeekday(dateStr: string, weekday: number): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  for (let step = 0; step <= 6; step++) {
+    const candidate = new Date(y, m - 1, d + step);
+    if (isoWeekday(candidate) === weekday) return toDateKey(candidate);
+  }
+  return dateStr;
+}
+
 /**
  * Advances a "YYYY-MM-DD" date by one recurrence period, for auto-generating
  * a recurring task's next occurrence. Monthly uses a month INDEX (not
