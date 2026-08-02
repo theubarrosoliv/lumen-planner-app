@@ -40,7 +40,7 @@ export function isoWeekday(d: Date): number {
   return js === 0 ? 7 : js;
 }
 
-const WEEKDAY_ABBR = ["", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+export const WEEKDAY_ABBR = ["", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 /** ISO weekday options (1=Mon..7=Sun) for weekday-picker UIs, shared by task
  * recurrence and habit frequency editors. */
 export const WEEKDAY_OPTIONS = [1, 2, 3, 4, 5, 6, 7].map((d) => ({ value: d, label: WEEKDAY_ABBR[d] }));
