@@ -372,7 +372,6 @@ export default function CalendarPage() {
           onDateChange={setScheduleDate}
           tasks={tasks}
           events={events}
-          onToggleTask={toggleTask}
           renderEventTrigger={(event, block) => (
             <EventDialog
               key={event.id}
