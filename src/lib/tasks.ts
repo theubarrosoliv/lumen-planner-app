@@ -1,7 +1,20 @@
 import { Task } from "@/store/types";
-import { nearestMatchingWeekday } from "@/lib/date";
+import { nearestMatchingWeekday, nextRecurrenceDate } from "@/lib/date";
 
 const DAY_MS = 86400000;
+
+const uid = () =>
+  globalThis.crypto?.randomUUID?.() ??
+  `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+// How many future occurrences to pre-create for a brand-new recurring task,
+// so e.g. "psicóloga toda segunda" already shows up on the calendar weeks
+// ahead instead of only revealing next Monday once THIS Monday is checked
+// off. Roughly 3 months for a weekly cadence; capped for every_n_days so a
+// short interval (every 2 days) doesn't generate dozens of rows at once.
+const WEEKDAY_HORIZON = 12;
+const EVERY_N_DAYS_HORIZON_DAYS = 90;
+const EVERY_N_DAYS_MAX_COUNT = 12;
 
 /**
  * A Task only ever sits on one `date`, so recurrence "weekdays" with more
@@ -25,6 +38,64 @@ export function splitWeekdayTask<T extends { recurrence?: string; weekdays?: num
     .slice()
     .sort((a, b) => a - b)
     .map((day) => ({ ...t, weekdays: [day], date: nearestMatchingWeekday(t.date, day) }));
+}
+
+type Recurring = {
+  recurrence?: string;
+  weekdays?: number[];
+  intervalDays?: number;
+  date: string;
+  seriesId?: string;
+};
+
+/**
+ * For a BRAND-NEW recurring task, pre-creates the next several occurrences
+ * up front instead of just one — otherwise "weekdays"/"every_n_days"
+ * recurrence only ever has a single instance in existence at a time (the
+ * next one is created by toggleTask in tasksSlice.ts only once the current
+ * one is completed), so a weekly appointment like "psicóloga toda segunda"
+ * never showed up on the calendar for any Monday beyond the very next one.
+ *
+ * All occurrences of one lineage share a `seriesId` so toggleTask can tell
+ * "the next occurrence already exists" from "spawn a fresh one" and avoid
+ * creating duplicates — see the recurrence branch in toggleTask.
+ *
+ * Deliberately NOT applied to "daily"/"weekly"/"monthly" (unchanged,
+ * one-at-a-time behavior — those read more like a recurring to-do you
+ * check off than a standing appointment) or reused on the EDIT path (see
+ * splitWeekdayTask above) — re-running this on every save of an existing
+ * task would keep generating fresh batches of duplicates.
+ */
+export function materializeRecurringTask<T extends Recurring>(t: T): T[] {
+  if (t.recurrence === "weekdays" && t.weekdays && t.weekdays.length > 0) {
+    const out: T[] = [];
+    for (const day of t.weekdays.slice().sort((a, b) => a - b)) {
+      const seriesId = uid();
+      let date = nearestMatchingWeekday(t.date, day);
+      for (let i = 0; i < WEEKDAY_HORIZON; i++) {
+        out.push({ ...t, weekdays: [day], date, seriesId });
+        date = nextRecurrenceDate(date, "weekdays", { weekdays: [day] });
+      }
+    }
+    return out;
+  }
+
+  if (t.recurrence === "every_n_days" && t.intervalDays && t.intervalDays >= 1) {
+    const seriesId = uid();
+    const count = Math.min(
+      EVERY_N_DAYS_MAX_COUNT,
+      Math.max(1, Math.ceil(EVERY_N_DAYS_HORIZON_DAYS / t.intervalDays)),
+    );
+    const out: T[] = [];
+    let date = t.date;
+    for (let i = 0; i < count; i++) {
+      out.push({ ...t, date, seriesId });
+      date = nextRecurrenceDate(date, "every_n_days", { intervalDays: t.intervalDays });
+    }
+    return out;
+  }
+
+  return [t];
 }
 
 /**

@@ -36,7 +36,7 @@ import { Task, NotifyLeadUnit, TaskPriority, TaskRecurrence } from "@/store/type
 import { itemTags } from "@/lib/tags";
 import { PRIORITY_STYLE } from "@/lib/priority";
 import { describeRecurrence } from "@/lib/date";
-import { splitWeekdayTask } from "@/lib/tasks";
+import { materializeRecurringTask, splitWeekdayTask } from "@/lib/tasks";
 import {
   AgendaItem,
   AgendaItemKind,
@@ -334,7 +334,7 @@ export default function Agenda() {
         action={
           <TaskDialog
             title="Nova tarefa"
-            onSave={(t) => splitWeekdayTask(t).forEach(addTask)}
+            onSave={(t) => materializeRecurringTask(t).forEach(addTask)}
             trigger={
               <Button className="bg-gradient-primary shadow-elegant">
                 <Plus className="mr-1 h-4 w-4" /> Nova tarefa

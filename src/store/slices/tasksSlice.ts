@@ -56,7 +56,17 @@ export const createTasksSlice = (
           weekdays: before.weekdays,
           intervalDays: before.intervalDays,
         });
-        get().addTask({ ...rest, date: nextDate });
+        // If this occurrence belongs to a batch that already has a future
+        // occurrence pre-created at nextDate (see materializeRecurringTask in
+        // src/lib/tasks.ts), don't spawn a duplicate — only top up the series
+        // once its horizon actually runs out.
+        const alreadyExists =
+          !!before.seriesId &&
+          !!userId &&
+          get().data[userId]?.tasks.some((t) => t.seriesId === before.seriesId && t.date === nextDate);
+        if (!alreadyExists) {
+          get().addTask({ ...rest, date: nextDate });
+        }
       }
     }
   }),

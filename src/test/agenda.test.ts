@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pruneCompletedTasks, splitWeekdayTask } from "@/lib/tasks";
+import { materializeRecurringTask, pruneCompletedTasks, splitWeekdayTask } from "@/lib/tasks";
 import { buildAgendaItems, inAgendaFilter, sortAgendaItems, AgendaItem } from "@/lib/agenda";
 import { emptyUserData, Task } from "@/store/types";
 
@@ -62,6 +62,45 @@ describe("splitWeekdayTask", () => {
       { weekdays: [2], date: "2026-07-07" }, // Tue
       { weekdays: [5], date: "2026-07-10" }, // Fri
     ]);
+  });
+});
+
+describe("materializeRecurringTask", () => {
+  it("leaves daily/weekly/monthly (and no recurrence) as a single task, no seriesId", () => {
+    const t = makeTask({ recurrence: "daily" });
+    expect(materializeRecurringTask(t)).toEqual([t]);
+    expect(materializeRecurringTask(makeTask())).toEqual([makeTask()]);
+  });
+
+  it("pre-creates a run of future Mondays for a single chosen weekday, all sharing one seriesId", () => {
+    const t = makeTask({ date: "2026-07-06", recurrence: "weekdays", weekdays: [1] }); // Monday
+    const result = materializeRecurringTask(t);
+    expect(result).toHaveLength(12);
+    expect(result[0].date).toBe("2026-07-06");
+    expect(result[1].date).toBe("2026-07-13"); // next Monday, +7 days
+    expect(result[11].date).toBe("2026-09-21"); // 11 weeks after the first
+    expect(new Set(result.map((r) => r.seriesId)).size).toBe(1);
+    expect(result.every((r) => r.weekdays?.length === 1 && r.weekdays[0] === 1)).toBe(true);
+  });
+
+  it("gives each chosen weekday its own independent series when multiple are picked", () => {
+    const t = makeTask({ date: "2026-07-06", recurrence: "weekdays", weekdays: [2, 5] }); // Tue, Fri
+    const result = materializeRecurringTask(t);
+    expect(result).toHaveLength(24); // 12 per day
+    const tueSeries = new Set(result.filter((r) => r.weekdays?.[0] === 2).map((r) => r.seriesId));
+    const friSeries = new Set(result.filter((r) => r.weekdays?.[0] === 5).map((r) => r.seriesId));
+    expect(tueSeries.size).toBe(1);
+    expect(friSeries.size).toBe(1);
+    expect([...tueSeries][0]).not.toBe([...friSeries][0]);
+  });
+
+  it("caps every_n_days occurrences to roughly a 90-day horizon", () => {
+    const t = makeTask({ date: "2026-07-06", recurrence: "every_n_days", intervalDays: 15 });
+    const result = materializeRecurringTask(t);
+    expect(result).toHaveLength(6); // ceil(90/15)
+    expect(result[0].date).toBe("2026-07-06");
+    expect(result[1].date).toBe("2026-07-21");
+    expect(new Set(result.map((r) => r.seriesId)).size).toBe(1);
   });
 });
 
