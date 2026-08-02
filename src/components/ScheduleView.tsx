@@ -139,8 +139,11 @@ export function ScheduleView({
       </div>
 
       <div ref={hScrollRef} className="overflow-x-auto">
-        <div style={{ minWidth: GUTTER_WIDTH + DAY_COLUMN_MIN_WIDTH * 7 }}>
-          <div className="flex border-b border-border pb-2">
+        <div
+          className="overflow-hidden rounded-lg border border-border"
+          style={{ minWidth: GUTTER_WIDTH + DAY_COLUMN_MIN_WIDTH * 7 }}
+        >
+          <div className="flex divide-x divide-border border-b border-border pb-2">
             <div style={{ width: GUTTER_WIDTH }} className="shrink-0" />
             {weekDates.map((dayKey, i) => {
               const isToday = dayKey === todayKey();
@@ -168,7 +171,7 @@ export function ScheduleView({
             })}
           </div>
 
-          <div className="flex border-b border-border py-2">
+          <div className="flex divide-x divide-border border-b border-border py-2">
             <div style={{ width: GUTTER_WIDTH }} className="shrink-0" />
             {byDay.map(({ dayKey, untimedTasks, untimedEvents }) => {
               const untimed = [
@@ -233,16 +236,24 @@ export function ScheduleView({
               </div>
 
               <div className="relative flex flex-1">
-                {Array.from({ length: 24 }, (_, h) => (
-                  <div key={h} className="absolute inset-x-0 border-t border-border/60" style={{ top: h * HOUR_HEIGHT }} />
-                ))}
+                {Array.from({ length: 48 }, (_, i) => {
+                  const minutes = i * 30;
+                  const isHour = minutes % 60 === 0;
+                  return (
+                    <div
+                      key={i}
+                      className={cn("absolute inset-x-0 border-t", isHour ? "border-border" : "border-border/30")}
+                      style={{ top: (minutes / 60) * HOUR_HEIGHT }}
+                    />
+                  );
+                })}
 
                 {byDay.map(({ dayKey, blocks }) => {
                   const isToday = dayKey === todayKey();
                   return (
                     <div
                       key={dayKey}
-                      className="relative flex-1 border-l border-border/40 first:border-l-0"
+                      className="relative flex-1 border-l border-border"
                       style={{ minWidth: DAY_COLUMN_MIN_WIDTH }}
                     >
                       {isToday && (

@@ -1,6 +1,15 @@
 import { SectionHeader } from "@/components/SectionHeader";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Plus, Trash2, CalendarDays, Clock } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Trash2,
+  Pencil,
+  Check,
+  CalendarDays,
+  Clock,
+} from "lucide-react";
 import { ScheduleView } from "@/components/ScheduleView";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,8 +27,11 @@ import { TagMultiSelect } from "@/components/TagMultiSelect";
 import { useConfirmDelete } from "@/hooks/use-confirm-delete";
 import { useCustomOptions } from "@/hooks/use-custom-options";
 import { useAppStore, useUserData, dateKey, todayKey } from "@/store/useAppStore";
-import { CalEvent, NotifyLeadUnit } from "@/store/types";
+import { CalEvent, NotifyLeadUnit, Task } from "@/store/types";
 import { itemTags } from "@/lib/tags";
+import { timeToMinutes } from "@/lib/timeline";
+import { PRIORITY_BLOCK_STYLE } from "@/lib/priority";
+import { formatLongDate } from "@/lib/date";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -50,7 +62,6 @@ export function EventDialog({
   initial,
   defaultDate,
   onSave,
-  onDelete,
 }: {
   trigger: React.ReactNode;
   title: string;
@@ -67,8 +78,6 @@ export function EventDialog({
     notifyLeadValue?: number;
     notifyLeadUnit?: NotifyLeadUnit;
   }) => void;
-  /** Only offered when editing an existing event (`initial` set). */
-  onDelete?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(initial?.title ?? "");
@@ -186,28 +195,13 @@ export function EventDialog({
             onLeadUnitChange={setNotifyLeadUnit}
           />
         </div>
-        <DialogFooter className="sm:justify-between">
-          {onDelete && (
-            <Button
-              type="button"
-              variant="ghost"
-              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-              onClick={() => {
-                setOpen(false);
-                onDelete();
-              }}
-            >
-              <Trash2 className="mr-1 h-4 w-4" /> Excluir
-            </Button>
-          )}
-          <div className="flex gap-2">
-            <Button variant="ghost" onClick={() => setOpen(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={submit} className="bg-gradient-primary shadow-elegant">
-              Salvar
-            </Button>
-          </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setOpen(false)}>
+            Cancelar
+          </Button>
+          <Button onClick={submit} className="bg-gradient-primary shadow-elegant">
+            Salvar
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -250,13 +244,19 @@ export default function CalendarPage() {
   const shift = (delta: number) =>
     setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + delta, 1));
 
-  /** Clicking (or activating via keyboard) a day drills straight into its
-   * Cronograma — the month grid is an overview, not a place to read details. */
-  const openDay = (key: string) => {
-    setSelected(key);
-    setScheduleDate(key);
-    setView("cronograma");
-  };
+  const selectedEvents = eventsFor(selected);
+  const selectedTasks = tasksFor(selected);
+
+  const dayItems = useMemo(() => {
+    type Item =
+      | { kind: "event"; minutes: number | null; event: CalEvent }
+      | { kind: "task"; minutes: number | null; task: Task };
+    const items: Item[] = [
+      ...selectedEvents.map((event) => ({ kind: "event" as const, minutes: timeToMinutes(event.time), event })),
+      ...selectedTasks.map((task) => ({ kind: "task" as const, minutes: timeToMinutes(task.time), task })),
+    ];
+    return items.sort((a, b) => (a.minutes ?? Infinity) - (b.minutes ?? Infinity));
+  }, [selectedEvents, selectedTasks]);
 
   // Roving tabindex for the month grid: exactly one cell is a tab stop at a
   // time (the selected day if it's in the visible month, else today, else
@@ -316,7 +316,7 @@ export default function CalendarPage() {
       case "Enter":
       case " ":
         e.preventDefault();
-        openDay(key);
+        setSelected(key);
         break;
     }
   };
@@ -379,17 +379,12 @@ export default function CalendarPage() {
               title="Editar evento"
               initial={event}
               onSave={(v) => updateEvent(event.id, v)}
-              onDelete={() =>
-                requestDelete(() => removeEvent(event.id), {
-                  title: "Excluir evento?",
-                  description: `"${event.title}" será removido permanentemente.`,
-                })
-              }
               trigger={block}
             />
           )}
         />
       ) : (
+      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="rounded-2xl border border-border bg-gradient-card p-4 md:p-6">
           <div className="mb-6 flex items-center justify-between">
             <h2 className="font-display text-2xl md:text-3xl" aria-live="polite">
@@ -444,7 +439,7 @@ export default function CalendarPage() {
                   tabIndex={cell.key === rovingKey ? 0 : -1}
                   aria-pressed={isSelected}
                   aria-label={`Dia ${cell.d}${isToday ? ", hoje" : ""} — ${evs.length} evento${evs.length === 1 ? "" : "s"}, ${tks.length} tarefa${tks.length === 1 ? "" : "s"}`}
-                  onClick={() => openDay(cell.key)}
+                  onClick={() => setSelected(cell.key)}
                   onKeyDown={(e) => handleCellKeyDown(e, cell.key)}
                   className={cn(
                     "group relative flex min-h-[64px] flex-col rounded-xl border p-1.5 pb-3 text-left outline-none transition-colors md:min-h-[92px] md:p-2 md:pb-3.5",
@@ -494,10 +489,7 @@ export default function CalendarPage() {
                     </div>
                   )}
 
-                  <div
-                    className="absolute right-1 top-1 hidden opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 md:block"
-                    onClick={(e) => e.stopPropagation()}
-                  >
+                  <div className="absolute right-1 top-1 hidden opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 md:block">
                     <EventDialog
                       title="Novo evento"
                       defaultDate={cell.key}
@@ -519,6 +511,116 @@ export default function CalendarPage() {
             })}
           </div>
         </div>
+
+        <aside className="rounded-2xl border border-border bg-gradient-card p-5">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                {selected === todayKey() ? "Hoje" : "Dia selecionado"}
+              </p>
+              <h3 className="truncate font-display text-xl">{formatLongDate(selected)}</h3>
+            </div>
+            <EventDialog
+              title="Novo evento"
+              defaultDate={selected}
+              onSave={(v) => addEvent(v)}
+              trigger={
+                <Button variant="ghost" size="icon" aria-label="Novo evento neste dia" className="shrink-0">
+                  <Plus className="h-4 w-4" />
+                </Button>
+              }
+            />
+          </div>
+
+          <div className="mt-5">
+            <p className="mb-2 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Agenda do dia</p>
+            {dayItems.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-border/70 px-3 py-6 text-center">
+                <p className="text-xs text-muted-foreground/70">Nada agendado para este dia.</p>
+              </div>
+            ) : (
+              <ul className="space-y-2">
+                {dayItems.map((item) =>
+                  item.kind === "event" ? (
+                    <li
+                      key={`e-${item.event.id}`}
+                      className="group flex items-center gap-2 rounded-lg border border-border bg-secondary/40 px-3 py-2 text-sm"
+                    >
+                      <span className={`h-2 w-2 shrink-0 rounded-full ${item.event.color}`} />
+                      {item.event.time && (
+                        <span className="text-mono shrink-0 text-xs text-muted-foreground">{item.event.time}</span>
+                      )}
+                      <span className="min-w-0 flex-1 truncate">{item.event.title}</span>
+                      {itemTags(item.event).length > 0 && (
+                        <span className="hidden shrink-0 truncate text-[10px] uppercase tracking-wider text-muted-foreground/70 sm:inline">
+                          {itemTags(item.event).join(" · ")}
+                        </span>
+                      )}
+                      <EventDialog
+                        title="Editar evento"
+                        initial={item.event}
+                        onSave={(v) => updateEvent(item.event.id, v)}
+                        trigger={
+                          <button
+                            aria-label={`Editar evento "${item.event.title}"`}
+                            className="opacity-100 transition-opacity hover:text-primary-glow md:opacity-0 md:group-hover:opacity-100"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                        }
+                      />
+                      <button
+                        onClick={() =>
+                          requestDelete(() => removeEvent(item.event.id), {
+                            title: "Excluir evento?",
+                            description: `"${item.event.title}" será removido permanentemente.`,
+                          })
+                        }
+                        aria-label={`Excluir evento "${item.event.title}"`}
+                        className="opacity-100 transition-opacity hover:text-destructive md:opacity-0 md:group-hover:opacity-100"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </li>
+                  ) : (
+                    <li
+                      key={`t-${item.task.id}`}
+                      className={cn(
+                        "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm",
+                        item.task.priority && !item.task.done
+                          ? PRIORITY_BLOCK_STYLE[item.task.priority]
+                          : "border-border bg-secondary/40",
+                      )}
+                    >
+                      <button
+                        onClick={() => toggleTask(item.task.id)}
+                        aria-label={item.task.done ? "Marcar tarefa como não concluída" : "Marcar tarefa como concluída"}
+                        className={cn(
+                          "flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors",
+                          item.task.done ? "border-primary bg-gradient-primary" : "border-border hover:border-primary/60",
+                        )}
+                      >
+                        {item.task.done && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
+                      </button>
+                      {item.task.time && item.task.time !== "—" && (
+                        <span className="text-mono shrink-0 text-xs text-muted-foreground">{item.task.time}</span>
+                      )}
+                      <span
+                        className={cn(
+                          "min-w-0 flex-1 truncate",
+                          item.task.done && "text-muted-foreground line-through",
+                        )}
+                      >
+                        {item.task.title}
+                      </span>
+                    </li>
+                  ),
+                )}
+              </ul>
+            )}
+          </div>
+        </aside>
+      </div>
       )}
       {dialog}
     </div>
