@@ -48,7 +48,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <div className="flex min-h-screen w-full bg-background">
         <AppSidebar />
 
-        <div className="flex flex-1 flex-col">
+        <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-border bg-background/70 px-4 pt-safe-top backdrop-blur-xl md:px-8">
             {/* The bottom tab bar (+ its "Mais" sheet) replaces the drawer as
                 the mobile navigation entry point, so the trigger only shows
