@@ -367,21 +367,7 @@ export default function CalendarPage() {
       </div>
 
       {view === "cronograma" ? (
-        <ScheduleView
-          date={scheduleDate}
-          onDateChange={setScheduleDate}
-          tasks={tasks}
-          events={events}
-          renderEventTrigger={(event, block) => (
-            <EventDialog
-              key={event.id}
-              title="Editar evento"
-              initial={event}
-              onSave={(v) => updateEvent(event.id, v)}
-              trigger={block}
-            />
-          )}
-        />
+        <ScheduleView date={scheduleDate} onDateChange={setScheduleDate} tasks={tasks} events={events} />
       ) : (
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="rounded-2xl border border-border bg-gradient-card p-4 md:p-6">

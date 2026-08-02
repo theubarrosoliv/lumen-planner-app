@@ -22,12 +22,14 @@ const COMPACT_BREAKPOINT = 640;
 
 const MONTH_ABBR = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
-// A hairline at `border-border`'s own contrast all but disappears against
-// this card's dark gradient background (both sit within a few % lightness
-// of each other) — `muted-foreground` is far lighter/darker than the card
-// in both themes, so even a faint tint of it reads as a real divider.
-const DIVIDER = "border-muted-foreground/25";
-const DIVIDER_SOFT = "border-muted-foreground/10";
+// The app's signature gold (`--primary`), not the near-invisible neutral
+// `border-border` — a hairline in that token all but disappears against this
+// card's dark gradient background (both sit within a few % lightness of each
+// other). Every structural line in the table — day columns, row groups, the
+// hour ruler, the outer frame — shares this one accent for a single, obviously
+// intentional grid instead of a patchwork of different divider treatments.
+const DIVIDER = "border-primary/35";
+const DIVIDER_SOFT = "border-primary/15";
 
 function shiftDate(key: string, deltaDays: number): string {
   const [y, m, d] = key.split("-").map(Number);
@@ -60,24 +62,20 @@ function laneTint(index: number, isToday: boolean): string {
  * A fixed, Google Calendar–style week grid: every day of the week (Mon–Sun)
  * side by side, sharing one hour ruler, so times line up across the whole
  * week instead of showing one day at a time. `date` is just an anchor — any
- * day within the week to display — not a "selected day". Purely a viewer:
- * nothing here is editable except events (tap one to open its edit dialog);
- * tasks render as read-only status, matching the "just visual" nature of a
- * cronograma vs. the actual task lists elsewhere in the app.
+ * day within the week to display — not a "selected day". Purely a read-only
+ * viewer: nothing here can be edited, completed, or deleted — that happens
+ * in the actual task/habit/event screens — this is just a picture of the week.
  */
 export function ScheduleView({
   date,
   onDateChange,
   tasks,
   events,
-  renderEventTrigger,
 }: {
   date: string;
   onDateChange: (key: string) => void;
   tasks: Task[];
   events: CalEvent[];
-  /** Lets the caller wrap each event block in its own edit dialog (Calendar.tsx owns EventDialog). */
-  renderEventTrigger: (event: CalEvent, block: React.ReactNode) => React.ReactNode;
 }) {
   const vScrollRef = useRef<HTMLDivElement>(null);
   const hScrollRef = useRef<HTMLDivElement>(null);
@@ -160,7 +158,7 @@ export function ScheduleView({
   const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
 
   return (
-    <div className="rounded-2xl border border-border bg-gradient-card p-4 md:p-6">
+    <div className="min-w-0 rounded-2xl border border-border bg-gradient-card p-4 md:p-6">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <h2 className="font-display text-xl md:text-2xl" aria-live="polite">
           {formatWeekRange(weekDates)}
@@ -178,9 +176,9 @@ export function ScheduleView({
         </div>
       </div>
 
-      <div ref={hScrollRef} className="overflow-x-auto">
+      <div ref={hScrollRef} className="min-w-0 overflow-x-auto">
         <div
-          className="overflow-hidden rounded-lg border border-border"
+          className={cn("overflow-hidden rounded-lg border", DIVIDER)}
           style={{ minWidth: isCompact ? undefined : GUTTER_WIDTH + DAY_COLUMN_MIN_WIDTH * 7 }}
         >
           <div className={cn("flex divide-x border-b pb-2", DIVIDER)}>
@@ -227,39 +225,26 @@ export function ScheduleView({
                   className={cn("flex flex-1 flex-col items-center gap-1 px-1 sm:items-stretch", laneTint(i, isToday))}
                   style={{ minWidth: columnMinWidth }}
                 >
-                  {visible.map((item) =>
-                    item.kind === "event" ? (
-                      renderEventTrigger(
-                        item.event,
-                        <span
-                          key={item.event.id}
-                          className={cn(
-                            "flex cursor-pointer items-center gap-1 rounded-full border border-border bg-secondary/50 text-[9px]",
-                            isCompact ? "h-2.5 w-2.5 justify-center p-0" : "truncate px-1.5 py-0.5",
-                          )}
-                          title={item.event.title}
-                        >
-                          <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", item.event.color)} />
-                          {!isCompact && <span className="truncate">{item.event.title}</span>}
-                        </span>,
-                      )
-                    ) : (
+                  {visible.map((item) => {
+                    const isDone = item.kind === "task" && item.task.done;
+                    const title = item.kind === "event" ? item.event.title : item.task.title;
+                    const dotColor =
+                      item.kind === "event" ? item.event.color : isDone ? "bg-success" : "bg-muted-foreground/60";
+                    return (
                       <span
-                        key={item.task.id}
-                        title={item.task.title}
+                        key={item.kind === "event" ? item.event.id : item.task.id}
+                        title={title}
                         className={cn(
                           "flex items-center gap-1 rounded-full border border-border text-[9px]",
-                          item.task.done ? "text-muted-foreground line-through" : "bg-secondary/50",
+                          isDone ? "text-muted-foreground line-through" : "bg-secondary/50",
                           isCompact ? "h-2.5 w-2.5 justify-center p-0" : "truncate px-1.5 py-0.5",
                         )}
                       >
-                        <span
-                          className={cn("h-1.5 w-1.5 shrink-0 rounded-full", item.task.done ? "bg-success" : "bg-muted-foreground/60")}
-                        />
-                        {!isCompact && <span className="truncate">{item.task.title}</span>}
+                        <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", dotColor)} />
+                        {!isCompact && <span className="truncate">{title}</span>}
                       </span>
-                    ),
-                  )}
+                    );
+                  })}
                   {hidden > 0 && (
                     <span className="px-1 text-[9px] text-muted-foreground">{isCompact ? `+${hidden}` : `+${hidden} mais`}</span>
                   )}
@@ -352,9 +337,8 @@ export function ScheduleView({
                         }
 
                         const e = b.event;
-                        return renderEventTrigger(
-                          e,
-                          <button
+                        return (
+                          <div
                             key={b.id}
                             style={style}
                             title={e.title}
@@ -369,7 +353,7 @@ export function ScheduleView({
                                 {e.time && <span className="block truncate opacity-80">{e.time}</span>}
                               </>
                             )}
-                          </button>,
+                          </div>
                         );
                       })}
                     </div>
