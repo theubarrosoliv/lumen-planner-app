@@ -48,6 +48,13 @@ export interface Task extends NotifyOverride {
   weekdays?: number[];
   /** Required when `recurrence` is "every_n_days": the interval in days (>=2). */
   intervalDays?: number;
+  /** Shared by every occurrence of the same recurring lineage (set when several
+   * future occurrences are pre-created at once — see materializeRecurringTask
+   * in src/lib/tasks.ts), so completing one can tell whether the next
+   * occurrence already exists instead of creating a duplicate. Absent for
+   * tasks created before this existed, and for "daily"/"weekly"/"monthly",
+   * which still only ever have one live occurrence at a time. */
+  seriesId?: string;
   /** Minutes; used to size this task's block in the Cronograma timeline. Absent = default block height. */
   duration?: number;
   done: boolean;
