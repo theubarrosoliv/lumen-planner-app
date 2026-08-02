@@ -16,24 +16,34 @@ import { HabitFrequency } from "@/store/types";
 import { FREQUENCY_LABEL, lastNPeriods, streakOf } from "@/lib/habits";
 import { TrendingUp, Flame, Target, Layers } from "lucide-react";
 
-const PERIODS_BY_FREQ: Record<HabitFrequency, number> = {
+// Only the three calendar-uniform kinds are offered as tabs here — the
+// custom kinds (weekdays/every_n_days/times_per_week) are configured
+// per-habit (different weekday sets, intervals, targets), so there's no
+// single shared period axis to compare them on in one trend chart. Their
+// streaks still show up in the "Streaks atuais" chart below, which is
+// per-habit and has no such constraint.
+const TREND_FREQUENCIES: HabitFrequency[] = ["daily", "weekly", "monthly"];
+
+const PERIODS_BY_FREQ: Partial<Record<HabitFrequency, number>> = {
   daily: 14,
   weekly: 12,
   monthly: 12,
 };
 
 function formatPeriodLabel(freq: HabitFrequency, key: string): string {
-  if (freq === "daily") {
-    const [, m, d] = key.split("-");
-    return `${d}/${m}`;
-  }
   if (freq === "weekly") {
     const w = key.split("-W")[1];
     return `S${w}`;
   }
-  const [, m] = key.split("-");
-  const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
-  return months[Number(m) - 1] ?? key;
+  if (freq === "monthly") {
+    const [, m] = key.split("-");
+    const months = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+    return months[Number(m) - 1] ?? key;
+  }
+  // daily (and, if ever routed here, weekdays/every_n_days/times_per_week —
+  // all use a "YYYY-MM-DD"-shaped key)
+  const parts = key.split("-");
+  return `${parts[2]}/${parts[1]}`;
 }
 
 function ChartCard({
@@ -87,7 +97,7 @@ export function HabitsCharts() {
 
   const habitsTrend = useMemo(() => {
     const matching = habits.filter((h) => (h.frequency ?? "daily") === freq);
-    const periods = lastNPeriods(freq, PERIODS_BY_FREQ[freq]);
+    const periods = lastNPeriods({ frequency: freq }, PERIODS_BY_FREQ[freq] ?? 12);
     return periods.map((p) => ({
       period: formatPeriodLabel(freq, p),
       done: matching.reduce((acc, h) => acc + (h.completions[p] ? 1 : 0), 0),
@@ -116,7 +126,7 @@ export function HabitsCharts() {
         empty={habits.length === 0}
       >
         <div className="mb-3 flex gap-1">
-          {(["daily", "weekly", "monthly"] as HabitFrequency[]).map((f) => (
+          {TREND_FREQUENCIES.map((f) => (
             <button
               key={f}
               onClick={() => setFreq(f)}

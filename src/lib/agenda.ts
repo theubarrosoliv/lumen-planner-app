@@ -22,6 +22,8 @@ export interface AgendaItem {
   done?: boolean;
   priority?: TaskPriority;
   recurrence?: TaskRecurrence;
+  weekdays?: number[];
+  intervalDays?: number;
   tags?: string[];
   /** Route to jump to for kinds that aren't editable inline from Agenda. */
   linkTo?: string;
@@ -45,6 +47,8 @@ export function buildAgendaItems(data: UserData): AgendaItem[] {
       done: t.done,
       priority: t.priority,
       recurrence: t.recurrence,
+      weekdays: t.weekdays,
+      intervalDays: t.intervalDays,
       tags: itemTags(t),
     });
   }

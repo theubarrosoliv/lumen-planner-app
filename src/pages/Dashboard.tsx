@@ -20,9 +20,10 @@ import {
 import { useAppStore, useUserData, todayKey } from "@/store/useAppStore";
 import { Link, useNavigate } from "react-router-dom";
 import {
-  FREQUENCY_LABEL,
   activeStreakPeriods,
   currentPeriodKey,
+  describeFrequency,
+  isDueOn,
   lastNPeriods,
   streakOf,
 } from "@/lib/habits";
@@ -249,28 +250,38 @@ export default function Dashboard() {
                   const freq = h.frequency ?? "daily";
                   const currentKey = currentPeriodKey(h);
                   const doneNow = !!h.completions[currentKey];
-                  const periods = lastNPeriods(freq, 14);
+                  const dueToday = isDueOn(h, new Date());
+                  const periods = lastNPeriods(h, 14);
                   const activeMask = activeStreakPeriods(h, periods);
                   const ctaShort = doneNow
                     ? "✓ feito"
-                    : freq === "daily"
-                      ? "marcar"
+                    : !dueToday
+                      ? "não hoje"
                       : freq === "weekly"
                         ? "esta sem."
-                        : "este mês";
+                        : freq === "monthly"
+                          ? "este mês"
+                          : freq === "every_n_days"
+                            ? "este ciclo"
+                            : "marcar";
                   return (
                     <div key={h.id}>
                       <div className="mb-1.5 flex items-center justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-sm">{h.name}</p>
                           <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                            {FREQUENCY_LABEL[freq]}
+                            {describeFrequency(h)}
                           </p>
                         </div>
                         <button
-                          onClick={() => toggleHabitPeriod(h.id, currentKey)}
+                          onClick={() => dueToday && toggleHabitPeriod(h.id, currentKey)}
+                          disabled={!dueToday}
                           className={`text-mono text-xs transition-colors ${
-                            doneNow ? "text-primary-glow" : "text-muted-foreground hover:text-foreground"
+                            !dueToday
+                              ? "cursor-not-allowed text-muted-foreground/40"
+                              : doneNow
+                                ? "text-primary-glow"
+                                : "text-muted-foreground hover:text-foreground"
                           }`}
                         >
                           {ctaShort}

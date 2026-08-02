@@ -52,7 +52,11 @@ export const createTasksSlice = (
 
       if (before.recurrence) {
         const { id: _id, done: _done, ...rest } = before;
-        get().addTask({ ...rest, date: nextRecurrenceDate(before.date, before.recurrence) });
+        const nextDate = nextRecurrenceDate(before.date, before.recurrence, {
+          weekdays: before.weekdays,
+          intervalDays: before.intervalDays,
+        });
+        get().addTask({ ...rest, date: nextDate });
       }
     }
   }),

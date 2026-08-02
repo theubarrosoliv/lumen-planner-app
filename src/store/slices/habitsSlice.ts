@@ -3,6 +3,11 @@ import { Habit, HabitFrequency, NotifyLeadUnit } from "../types";
 import { CoreState, mutate, uid } from "../core";
 import { notifyLocal } from "@/lib/localNotify";
 
+const pad = (n: number) => String(n).padStart(2, "0");
+/** Local calendar day (not UTC — see the anchorDate doc comment on Habit in
+ * store/types.ts for why this matters for "every_n_days" habits). */
+const localDayKey = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
 export interface HabitsSlice {
   addHabit: (
     name: string,
@@ -10,10 +15,25 @@ export interface HabitsSlice {
     notify?: boolean,
     notifyLeadValue?: number,
     notifyLeadUnit?: NotifyLeadUnit,
+    weekdays?: number[],
+    intervalDays?: number,
+    timesPerWeek?: number,
   ) => void;
   updateHabit: (
     id: string,
-    patch: Partial<Pick<Habit, "name" | "frequency" | "notify" | "notifyLeadValue" | "notifyLeadUnit">>,
+    patch: Partial<
+      Pick<
+        Habit,
+        | "name"
+        | "frequency"
+        | "notify"
+        | "notifyLeadValue"
+        | "notifyLeadUnit"
+        | "weekdays"
+        | "intervalDays"
+        | "timesPerWeek"
+      >
+    >,
   ) => void;
   removeHabit: (id: string) => void;
   toggleHabitPeriod: (id: string, key: string) => void;
@@ -29,6 +49,9 @@ export const createHabitsSlice = (
       notify?: boolean,
       notifyLeadValue?: number,
       notifyLeadUnit?: NotifyLeadUnit,
+      weekdays?: number[],
+      intervalDays?: number,
+      timesPerWeek?: number,
     ) =>
       set((s) =>
         mutate(s, (d) => ({
@@ -43,6 +66,10 @@ export const createHabitsSlice = (
               notify,
               notifyLeadValue,
               notifyLeadUnit,
+              weekdays,
+              intervalDays,
+              timesPerWeek,
+              anchorDate: frequency === "every_n_days" ? localDayKey(new Date()) : undefined,
               completions: {},
             },
           ],
@@ -52,12 +79,34 @@ export const createHabitsSlice = (
   updateHabit: persist(
     (
       id: string,
-      patch: Partial<Pick<Habit, "name" | "frequency" | "notify" | "notifyLeadValue" | "notifyLeadUnit">>,
+      patch: Partial<
+        Pick<
+          Habit,
+          | "name"
+          | "frequency"
+          | "notify"
+          | "notifyLeadValue"
+          | "notifyLeadUnit"
+          | "weekdays"
+          | "intervalDays"
+          | "timesPerWeek"
+        >
+      >,
     ) =>
       set((s) =>
         mutate(s, (d) => ({
           ...d,
-          habits: d.habits.map((h) => (h.id === id ? { ...h, ...patch } : h)),
+          habits: d.habits.map((h) => {
+            if (h.id !== id) return h;
+            const next: Habit = { ...h, ...patch };
+            // First time this habit becomes "every_n_days", anchor its cycle
+            // to today — never overwrite an anchor that already exists (that
+            // would silently shift every past cycle's boundary).
+            if (next.frequency === "every_n_days" && !next.anchorDate) {
+              next.anchorDate = localDayKey(new Date());
+            }
+            return next;
+          }),
         })),
       ),
   ),
