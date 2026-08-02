@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pruneCompletedTasks } from "@/lib/tasks";
+import { pruneCompletedTasks, splitWeekdayTask } from "@/lib/tasks";
 import { buildAgendaItems, inAgendaFilter, sortAgendaItems, AgendaItem } from "@/lib/agenda";
 import { emptyUserData, Task } from "@/store/types";
 
@@ -37,6 +37,31 @@ describe("pruneCompletedTasks", () => {
   it("drops legacy done tasks with no completedAt (treated as already overdue)", () => {
     const tasks = [makeTask({ done: true, completedAt: undefined })];
     expect(pruneCompletedTasks(tasks)).toHaveLength(0);
+  });
+});
+
+// 2026-07-06 is a Monday (verified: Mon 07-06, Tue 07-07, ..., Fri 07-10).
+describe("splitWeekdayTask", () => {
+  it("passes non-weekdays tasks through untouched", () => {
+    const t = makeTask({ recurrence: "daily" });
+    expect(splitWeekdayTask(t)).toEqual([t]);
+  });
+
+  it("snaps a single chosen weekday's date forward when it doesn't already match", () => {
+    const t = makeTask({ date: "2026-07-06", recurrence: "weekdays", weekdays: [5] }); // Mon -> next Fri
+    const result = splitWeekdayTask(t);
+    expect(result).toHaveLength(1);
+    expect(result[0].date).toBe("2026-07-10");
+  });
+
+  it("splits multiple chosen weekdays into one task per day, each on its own nearest match", () => {
+    const t = makeTask({ date: "2026-07-06", recurrence: "weekdays", weekdays: [5, 2] }); // Fri, Tue
+    const result = splitWeekdayTask(t);
+    expect(result).toHaveLength(2);
+    expect(result.map((r) => ({ weekdays: r.weekdays, date: r.date }))).toEqual([
+      { weekdays: [2], date: "2026-07-07" }, // Tue
+      { weekdays: [5], date: "2026-07-10" }, // Fri
+    ]);
   });
 });
 
