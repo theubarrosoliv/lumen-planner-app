@@ -24,7 +24,13 @@ export interface NotifyOverride {
 
 export type TaskPriority = "high" | "medium" | "low";
 
-export type TaskRecurrence = "daily" | "weekly" | "monthly";
+/**
+ * "weekdays": repeats only on the chosen ISO weekdays (1=Mon..7=Sun) — covers
+ * "toda terça", "toda terça e quinta", etc.
+ * "every_n_days": repeats every N days from the last occurrence — covers
+ * "de 15 em 15 dias".
+ */
+export type TaskRecurrence = "daily" | "weekly" | "monthly" | "weekdays" | "every_n_days";
 
 export interface Task extends NotifyOverride {
   id: string;
@@ -38,6 +44,10 @@ export interface Task extends NotifyOverride {
   priority?: TaskPriority;
   /** When set, completing the task creates its next occurrence automatically. */
   recurrence?: TaskRecurrence;
+  /** Required when `recurrence` is "weekdays": ISO weekdays (1=Mon..7=Sun) it repeats on. */
+  weekdays?: number[];
+  /** Required when `recurrence` is "every_n_days": the interval in days (>=2). */
+  intervalDays?: number;
   /** Minutes; used to size this task's block in the Cronograma timeline. Absent = default block height. */
   duration?: number;
   done: boolean;
@@ -48,18 +58,38 @@ export interface Task extends NotifyOverride {
   notes?: string;
 }
 
-export type HabitFrequency = "daily" | "weekly" | "monthly";
+/**
+ * "weekdays": due only on the chosen ISO weekdays — other days don't count
+ * against the streak. "every_n_days": one checkbox per N-day cycle, anchored
+ * to the habit's `createdAt`. "times_per_week": any day counts, checked
+ * against a per-week target instead of a fixed day.
+ */
+export type HabitFrequency = "daily" | "weekly" | "monthly" | "weekdays" | "every_n_days" | "times_per_week";
 
 export interface Habit extends NotifyOverride {
   id: string;
   name: string;
   createdAt: string;
   frequency: HabitFrequency;
+  /** Required when `frequency` is "weekdays": ISO weekdays (1=Mon..7=Sun) the habit is due. */
+  weekdays?: number[];
+  /** Required when `frequency` is "every_n_days": the cycle length in days (>=2). */
+  intervalDays?: number;
+  /** Required when `frequency` is "every_n_days": plain "YYYY-MM-DD" calendar
+   * day the cycle is anchored to (the client's local day when this frequency
+   * was set — see habitsSlice.ts). Deliberately NOT derived from `createdAt`:
+   * that's a UTC timestamp, and re-reading its calendar date depends on
+   * whichever timezone happens to be doing the reading (the user's browser
+   * vs. the UTC edge-function server), which can disagree on what day it is. */
+  anchorDate?: string;
+  /** Required when `frequency` is "times_per_week": check-ins needed within the ISO week to count it as done. */
+  timesPerWeek?: number;
   /**
    * Keyed by period:
-   *  - daily:   YYYY-MM-DD
-   *  - weekly:  YYYY-Www (ISO week)
-   *  - monthly: YYYY-MM
+   *  - daily / weekdays / times_per_week: YYYY-MM-DD (one entry per day)
+   *  - weekly:                            YYYY-Www (ISO week)
+   *  - monthly:                           YYYY-MM
+   *  - every_n_days:                      YYYY-MM-DD of the cycle's start day
    * Past completions are preserved even when frequency changes.
    */
   completions: Record<string, boolean>;

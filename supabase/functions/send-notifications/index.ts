@@ -11,7 +11,7 @@
 // Auto-injected by Supabase: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { periodKeyFor, streakOf, type HabitFrequency } from "./habits.ts";
+import { isDueOn, periodEnd, periodKeyFor, streakOf, weekProgress, type HabitFrequency } from "./habits.ts";
 import { getAccessToken, sendPush } from "./fcm.ts";
 
 const DEFAULT_TIMEZONE = "America/Sao_Paulo";
@@ -120,19 +120,6 @@ const NOTIFY_GRACE_MINUTES = 2;
 function isWithinLeadWindow(dueMoment: Date, now: Date, leadMinutes: number): boolean {
   const minutesUntil = (dueMoment.getTime() - now.getTime()) / 60_000;
   return minutesUntil >= -NOTIFY_GRACE_MINUTES && minutesUntil <= leadMinutes;
-}
-
-/** Start of the NEXT period boundary for a habit — the moment its current period ends. */
-function periodEnd(freq: HabitFrequency, now: Date): Date {
-  if (freq === "weekly") {
-    const isoDay = now.getDay() || 7; // Mon=1..Sun=7
-    const daysUntilNextMonday = 8 - isoDay;
-    return new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysUntilNextMonday, 0, 0, 0);
-  }
-  if (freq === "monthly") {
-    return new Date(now.getFullYear(), now.getMonth() + 1, 1, 0, 0, 0);
-  }
-  return new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
 }
 
 function fmtDatePt(dateStr: string): string {
@@ -245,12 +232,22 @@ function computeCandidates(data: any, prefs: NotificationPrefs, now: Date): Cand
   for (const h of data.habits ?? []) {
     if (h.notify === false) continue;
     const freq: HabitFrequency = h.frequency ?? "daily";
-    const currentKey = periodKeyFor(freq, now);
-    const completed = !!h.completions?.[currentKey];
+    // "weekdays" habits are simply not due on off days — never nag then.
+    if (!isDueOn(h, now)) continue;
+    const currentKey = periodKeyFor(h, now);
+    // "times_per_week" has no single boolean period — it's done once the
+    // week's check-in target is met, regardless of which days were used.
+    const completed =
+      freq === "times_per_week"
+        ? (() => {
+            const wp = weekProgress(h, now);
+            return wp.count >= wp.target;
+          })()
+        : !!h.completions?.[currentKey];
     if (completed) continue;
 
     const override = leadMinutesFor(h.notifyLeadValue, h.notifyLeadUnit);
-    const end = override !== null ? periodEnd(freq, now) : null;
+    const end = override !== null ? periodEnd(h, now) : null;
 
     if (cats.habitReminder) {
       const due = override !== null && end

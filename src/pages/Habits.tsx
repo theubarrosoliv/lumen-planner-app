@@ -17,17 +17,20 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import {
-  FREQUENCY_LABEL,
   FREQUENCY_UNIT,
   activeStreakPeriods,
   currentPeriodKey,
+  describeFrequency,
+  isDueOn,
   lastNPeriods,
   streakOf,
   totalCompletions,
+  weekProgress,
 } from "@/lib/habits";
 import { cn } from "@/lib/utils";
 import { HabitsCharts } from "@/components/DashboardCharts";
 import { NotifyField } from "@/components/NotifyField";
+import { WeekdaySelector } from "@/components/WeekdaySelector";
 import { useConfirmDelete } from "@/hooks/use-confirm-delete";
 
 function HabitDialog({
@@ -42,6 +45,9 @@ function HabitDialog({
   onSave: (v: {
     name: string;
     frequency: HabitFrequency;
+    weekdays?: number[];
+    intervalDays?: number;
+    timesPerWeek?: number;
     notify?: boolean;
     notifyLeadValue?: number;
     notifyLeadUnit?: NotifyLeadUnit;
@@ -52,17 +58,41 @@ function HabitDialog({
   const [frequency, setFrequency] = useState<HabitFrequency>(
     (initial?.frequency as HabitFrequency) ?? "daily",
   );
+  const [weekdays, setWeekdays] = useState<number[]>(initial?.weekdays ?? []);
+  const [intervalDays, setIntervalDays] = useState<number | undefined>(initial?.intervalDays ?? 15);
+  const [timesPerWeek, setTimesPerWeek] = useState<number | undefined>(initial?.timesPerWeek ?? 3);
   const [notify, setNotify] = useState(initial?.notify !== false);
   const [notifyLeadValue, setNotifyLeadValue] = useState<number | undefined>(initial?.notifyLeadValue);
   const [notifyLeadUnit, setNotifyLeadUnit] = useState<NotifyLeadUnit>(initial?.notifyLeadUnit ?? "hours");
 
   const submit = () => {
     if (!name.trim()) return toast.error("Dê um nome ao hábito.");
-    onSave({ name: name.trim(), frequency, notify, notifyLeadValue, notifyLeadUnit });
+    if (frequency === "weekdays" && weekdays.length === 0) {
+      return toast.error("Selecione ao menos um dia da semana.");
+    }
+    if (frequency === "every_n_days" && (!intervalDays || intervalDays < 2)) {
+      return toast.error("Informe a cada quantos dias (mínimo 2).");
+    }
+    if (frequency === "times_per_week" && (!timesPerWeek || timesPerWeek < 1 || timesPerWeek > 7)) {
+      return toast.error("Informe quantas vezes por semana (1 a 7).");
+    }
+    onSave({
+      name: name.trim(),
+      frequency,
+      weekdays: frequency === "weekdays" ? weekdays : undefined,
+      intervalDays: frequency === "every_n_days" ? intervalDays : undefined,
+      timesPerWeek: frequency === "times_per_week" ? timesPerWeek : undefined,
+      notify,
+      notifyLeadValue,
+      notifyLeadUnit,
+    });
     setOpen(false);
     if (!initial) {
       setName("");
       setFrequency("daily");
+      setWeekdays([]);
+      setIntervalDays(15);
+      setTimesPerWeek(3);
     }
   };
 
@@ -95,8 +125,46 @@ function HabitDialog({
                 <SelectItem value="daily">Diário · todo dia</SelectItem>
                 <SelectItem value="weekly">Semanal · uma vez na semana</SelectItem>
                 <SelectItem value="monthly">Mensal · uma vez no mês</SelectItem>
+                <SelectItem value="weekdays">Dias específicos · você escolhe quais</SelectItem>
+                <SelectItem value="every_n_days">A cada X dias</SelectItem>
+                <SelectItem value="times_per_week">X vezes por semana · quaisquer dias</SelectItem>
               </SelectContent>
             </Select>
+            {frequency === "weekdays" && (
+              <div className="pt-1">
+                <WeekdaySelector value={weekdays} onChange={setWeekdays} />
+              </div>
+            )}
+            {frequency === "every_n_days" && (
+              <div className="flex items-center gap-2 pt-1">
+                <span className="text-sm text-muted-foreground">A cada</span>
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  min={2}
+                  step={1}
+                  className="h-8 w-20"
+                  value={intervalDays ?? ""}
+                  onChange={(e) => setIntervalDays(e.target.value === "" ? undefined : Number(e.target.value))}
+                />
+                <span className="text-sm text-muted-foreground">dias</span>
+              </div>
+            )}
+            {frequency === "times_per_week" && (
+              <div className="flex items-center gap-2 pt-1">
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  max={7}
+                  step={1}
+                  className="h-8 w-20"
+                  value={timesPerWeek ?? ""}
+                  onChange={(e) => setTimesPerWeek(e.target.value === "" ? undefined : Number(e.target.value))}
+                />
+                <span className="text-sm text-muted-foreground">vezes por semana, em qualquer dia</span>
+              </div>
+            )}
             <p className="text-[11px] text-muted-foreground">
               A marca reseta no início de cada período. O histórico de streak e total são
               preservados.
@@ -141,7 +209,18 @@ export default function Habits() {
         action={
           <HabitDialog
             title="Novo hábito"
-            onSave={(v) => addHabit(v.name, v.frequency, v.notify, v.notifyLeadValue, v.notifyLeadUnit)}
+            onSave={(v) =>
+              addHabit(
+                v.name,
+                v.frequency,
+                v.notify,
+                v.notifyLeadValue,
+                v.notifyLeadUnit,
+                v.weekdays,
+                v.intervalDays,
+                v.timesPerWeek,
+              )
+            }
             trigger={
               <Button className="bg-gradient-primary shadow-elegant">
                 <Plus className="mr-1 h-4 w-4" /> Novo hábito
@@ -168,7 +247,15 @@ export default function Habits() {
         <div className="grid gap-4 md:grid-cols-2">
           {habits.map((h, i) => {
             const freq = h.frequency ?? "daily";
-            const periods = lastNPeriods(freq, freq === "daily" ? 21 : 12);
+            const periodCount =
+              freq === "daily" || freq === "weekdays"
+                ? 21
+                : freq === "every_n_days"
+                  ? 10
+                  : freq === "times_per_week"
+                    ? 14
+                    : 12;
+            const periods = lastNPeriods(h, periodCount);
             const activeMask = activeStreakPeriods(h, periods);
             const completed = periods.filter((p) => h.completions[p]).length;
             const pct = Math.round((completed / periods.length) * 100);
@@ -176,6 +263,8 @@ export default function Habits() {
             const total = totalCompletions(h);
             const currentKey = currentPeriodKey(h);
             const doneNow = !!h.completions[currentKey];
+            const dueToday = isDueOn(h, new Date());
+            const week = freq === "times_per_week" ? weekProgress(h) : null;
 
             return (
               <div
@@ -190,14 +279,24 @@ export default function Habits() {
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
                       <button
-                        onClick={() => toggleHabitPeriod(h.id, currentKey)}
+                        onClick={() => dueToday && toggleHabitPeriod(h.id, currentKey)}
+                        disabled={!dueToday}
                         aria-pressed={doneNow}
-                        aria-label={doneNow ? "Desmarcar hábito neste período" : "Marcar hábito como feito"}
+                        aria-label={
+                          !dueToday
+                            ? "Não programado para hoje"
+                            : doneNow
+                              ? "Desmarcar hábito neste período"
+                              : "Marcar hábito como feito"
+                        }
+                        title={!dueToday ? "Não programado para hoje" : undefined}
                         className={cn(
                           "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition-colors",
-                          doneNow
-                            ? "border-primary bg-gradient-primary"
-                            : "border-border bg-secondary/40 hover:border-primary/40",
+                          !dueToday
+                            ? "cursor-not-allowed border-border bg-secondary/20 opacity-40"
+                            : doneNow
+                              ? "border-primary bg-gradient-primary"
+                              : "border-border bg-secondary/40 hover:border-primary/40",
                         )}
                       >
                         {doneNow && <Check className="h-3.5 w-3.5 text-primary-foreground" />}
@@ -205,11 +304,12 @@ export default function Habits() {
                       <h3 className="font-display text-xl leading-tight">{h.name}</h3>
                       <span className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary/50 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
                         <Repeat className="h-2.5 w-2.5" />
-                        {FREQUENCY_LABEL[freq]}
+                        {describeFrequency(h)}
                       </span>
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {completed}/{periods.length} {FREQUENCY_UNIT[freq]} · {pct}%
+                      {week && ` · ${week.count}/${week.target} esta semana`}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">

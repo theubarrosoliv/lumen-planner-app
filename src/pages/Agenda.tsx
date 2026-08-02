@@ -28,12 +28,14 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TagMultiSelect } from "@/components/TagMultiSelect";
 import { NotifyField } from "@/components/NotifyField";
+import { WeekdaySelector } from "@/components/WeekdaySelector";
 import { useCustomOptions } from "@/hooks/use-custom-options";
 import { useConfirmDelete } from "@/hooks/use-confirm-delete";
 import { useAppStore, useUserData, todayKey } from "@/store/useAppStore";
 import { Task, NotifyLeadUnit, TaskPriority, TaskRecurrence } from "@/store/types";
 import { itemTags } from "@/lib/tags";
 import { PRIORITY_STYLE } from "@/lib/priority";
+import { describeRecurrence } from "@/lib/date";
 import {
   AgendaItem,
   AgendaItemKind,
@@ -55,12 +57,6 @@ const tagColor: Record<string, string> = {
 
 const TAGS = ["Foco", "Trabalho", "Reunião", "Hábito", "Saúde", "Pessoal"];
 
-const RECURRENCE_LABEL: Record<TaskRecurrence, string> = {
-  daily: "Repete diariamente",
-  weekly: "Repete semanalmente",
-  monthly: "Repete mensalmente",
-};
-
 function TaskDialog({
   initial,
   onSave,
@@ -76,6 +72,8 @@ function TaskDialog({
     notes?: string;
     priority?: TaskPriority;
     recurrence?: TaskRecurrence;
+    weekdays?: number[];
+    intervalDays?: number;
     duration?: number;
     notify?: boolean;
     notifyLeadValue?: number;
@@ -91,6 +89,8 @@ function TaskDialog({
   const [date, setDate] = useState(initial?.date ?? todayKey());
   const [priority, setPriority] = useState<TaskPriority | "none">(initial?.priority ?? "none");
   const [recurrence, setRecurrence] = useState<TaskRecurrence | "none">(initial?.recurrence ?? "none");
+  const [weekdays, setWeekdays] = useState<number[]>(initial?.weekdays ?? []);
+  const [intervalDays, setIntervalDays] = useState<number | undefined>(initial?.intervalDays ?? 15);
   const [duration, setDuration] = useState<number | undefined>(initial?.duration);
   const [notify, setNotify] = useState(initial?.notify !== false);
   const [notifyLeadValue, setNotifyLeadValue] = useState<number | undefined>(initial?.notifyLeadValue);
@@ -108,6 +108,14 @@ function TaskDialog({
       toast.error("Dê um título à tarefa.");
       return;
     }
+    if (recurrence === "weekdays" && weekdays.length === 0) {
+      toast.error("Selecione ao menos um dia da semana.");
+      return;
+    }
+    if (recurrence === "every_n_days" && (!intervalDays || intervalDays < 2)) {
+      toast.error("Informe a cada quantos dias (mínimo 2).");
+      return;
+    }
     onSave({
       title: text.trim(),
       time: time || "—",
@@ -115,6 +123,8 @@ function TaskDialog({
       date,
       priority: priority === "none" ? undefined : priority,
       recurrence: recurrence === "none" ? undefined : recurrence,
+      weekdays: recurrence === "weekdays" ? weekdays : undefined,
+      intervalDays: recurrence === "every_n_days" ? intervalDays : undefined,
       duration,
       notify,
       notifyLeadValue,
@@ -127,6 +137,8 @@ function TaskDialog({
       setTags([]);
       setPriority("none");
       setRecurrence("none");
+      setWeekdays([]);
+      setIntervalDays(15);
       setDuration(undefined);
     }
   };
@@ -205,8 +217,33 @@ function TaskDialog({
                 <SelectItem value="daily">Diariamente</SelectItem>
                 <SelectItem value="weekly">Semanalmente</SelectItem>
                 <SelectItem value="monthly">Mensalmente</SelectItem>
+                <SelectItem value="weekdays">Dias da semana…</SelectItem>
+                <SelectItem value="every_n_days">A cada X dias…</SelectItem>
               </SelectContent>
             </Select>
+            {recurrence === "weekdays" && (
+              <div className="pt-1">
+                <WeekdaySelector value={weekdays} onChange={setWeekdays} />
+                <p className="mt-1.5 text-[11px] text-muted-foreground">
+                  A tarefa se repete nos dias marcados — escolha mais de um para "N vezes por semana".
+                </p>
+              </div>
+            )}
+            {recurrence === "every_n_days" && (
+              <div className="flex items-center gap-2 pt-1">
+                <span className="text-sm text-muted-foreground">A cada</span>
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  min={2}
+                  step={1}
+                  className="h-8 w-20"
+                  value={intervalDays ?? ""}
+                  onChange={(e) => setIntervalDays(e.target.value === "" ? undefined : Number(e.target.value))}
+                />
+                <span className="text-sm text-muted-foreground">dias</span>
+              </div>
+            )}
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Tags</Label>
@@ -397,7 +434,7 @@ export default function Agenda() {
                       {it.recurrence && (
                         <Repeat
                           className="h-3 w-3 shrink-0 text-muted-foreground"
-                          aria-label={RECURRENCE_LABEL[it.recurrence]}
+                          aria-label={describeRecurrence(it)}
                         />
                       )}
                     </p>
