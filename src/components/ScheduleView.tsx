@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Task, CalEvent } from "@/store/types";
@@ -13,23 +13,22 @@ const DEFAULT_TASK_DURATION = 30; // minutes, when the task has none set
 const DEFAULT_EVENT_DURATION = 60;
 const MIN_BLOCK_HEIGHT = 26; // px — keeps very short/zero-duration blocks tappable
 const GUTTER_WIDTH = 48; // px — width of the shared hour-label column
-const COMPACT_GUTTER_WIDTH = 28; // px — narrower gutter so 7 columns fit an iPhone with no drag
-const DAY_COLUMN_MIN_WIDTH = 108; // px floor per day on roomy screens
+const DAY_COLUMN_MIN_WIDTH = 108; // px floor per day — the week scrolls horizontally below this
 const MAX_VISIBLE_UNTIMED = 2;
-/** Below this viewport width the whole week is squeezed to fit with no
- * horizontal scroll — labels drop to just the time so 7 columns stay legible. */
-const COMPACT_BREAKPOINT = 640;
 
 const MONTH_ABBR = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
-// The app's signature gold (`--primary`), not the near-invisible neutral
-// `border-border` — a hairline in that token all but disappears against this
-// card's dark gradient background (both sit within a few % lightness of each
-// other). Every structural line in the table — day columns, row groups, the
-// hour ruler, the outer frame — shares this one accent for a single, obviously
-// intentional grid instead of a patchwork of different divider treatments.
-const DIVIDER = "border-primary/35";
-const DIVIDER_SOFT = "border-primary/15";
+// The app's signature gold, reserved for the two things that actually read as
+// "table structure": the vertical lines separating one day from the next,
+// and the frame around the whole table. Horizontal rules (row groups, the
+// hour ruler) stay neutral so the gold doesn't turn into visual noise.
+// `divide-*` needs its own explicit color utility — a `border-{color}` class
+// on the row only colors that row's own border sides (e.g. `border-b`), not
+// the hairlines `divide-x` draws between its children.
+const DIVIDER_GOLD = "border-primary/35";
+const DIVIDE_GOLD = "divide-primary/35";
+const DIVIDER_NEUTRAL = "border-muted-foreground/25";
+const DIVIDER_NEUTRAL_SOFT = "border-muted-foreground/10";
 
 function shiftDate(key: string, deltaDays: number): string {
   const [y, m, d] = key.split("-").map(Number);
@@ -80,27 +79,6 @@ export function ScheduleView({
   const vScrollRef = useRef<HTMLDivElement>(null);
   const hScrollRef = useRef<HTMLDivElement>(null);
 
-  const [isCompact, setIsCompact] = useState(
-    () => typeof window !== "undefined" && window.innerWidth < COMPACT_BREAKPOINT,
-  );
-  useEffect(() => {
-    const mq = window.matchMedia(`(max-width: ${COMPACT_BREAKPOINT - 1}px)`);
-    const handler = () => setIsCompact(mq.matches);
-    handler();
-    // Both listeners target the same check — some environments (older
-    // WebViews, devtools viewport overrides) resize without firing a
-    // MediaQueryList "change" event, so the plain "resize" is a fallback.
-    mq.addEventListener("change", handler);
-    window.addEventListener("resize", handler);
-    return () => {
-      mq.removeEventListener("change", handler);
-      window.removeEventListener("resize", handler);
-    };
-  }, []);
-
-  const gutterWidth = isCompact ? COMPACT_GUTTER_WIDTH : GUTTER_WIDTH;
-  const columnMinWidth = isCompact ? undefined : DAY_COLUMN_MIN_WIDTH;
-
   const weekDates = useMemo(() => {
     const start = mondayOf(date);
     const [y, m, d] = start.split("-").map(Number);
@@ -144,8 +122,8 @@ export function ScheduleView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [weekStart]);
 
-  // Auto-scroll the week horizontally so the anchor day is in view — a
-  // no-op once the compact layout makes every day fit with nothing to scroll.
+  // Auto-scroll the week horizontally so the anchor day is in view on
+  // narrow screens, where the week doesn't fully fit.
   useEffect(() => {
     const container = hScrollRef.current;
     const target = container?.querySelector<HTMLElement>(`[data-day="${date}"]`);
@@ -153,7 +131,7 @@ export function ScheduleView({
     const contRect = container.getBoundingClientRect();
     const targRect = target.getBoundingClientRect();
     container.scrollLeft += targRect.left - contRect.left - (contRect.width - targRect.width) / 2;
-  }, [date, isCompact]);
+  }, [date]);
 
   const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
 
@@ -178,11 +156,11 @@ export function ScheduleView({
 
       <div ref={hScrollRef} className="min-w-0 overflow-x-auto">
         <div
-          className={cn("overflow-hidden rounded-lg border", DIVIDER)}
-          style={{ minWidth: isCompact ? undefined : GUTTER_WIDTH + DAY_COLUMN_MIN_WIDTH * 7 }}
+          className={cn("overflow-hidden rounded-lg border", DIVIDER_GOLD)}
+          style={{ minWidth: GUTTER_WIDTH + DAY_COLUMN_MIN_WIDTH * 7 }}
         >
-          <div className={cn("flex divide-x border-b pb-2", DIVIDER)}>
-            <div style={{ width: gutterWidth }} className="shrink-0" />
+          <div className={cn("flex divide-x border-b pb-2", DIVIDE_GOLD, DIVIDER_NEUTRAL)}>
+            <div style={{ width: GUTTER_WIDTH }} className="shrink-0" />
             {weekDates.map((dayKey, i) => {
               const isToday = dayKey === todayKey();
               const [, , d] = dayKey.split("-").map(Number);
@@ -190,15 +168,15 @@ export function ScheduleView({
                 <div
                   key={dayKey}
                   data-day={dayKey}
-                  className={cn("flex flex-1 flex-col items-center gap-1 py-0.5", laneTint(i, isToday))}
-                  style={{ minWidth: columnMinWidth }}
+                  className={cn("flex flex-1 flex-col items-center gap-1", laneTint(i, isToday))}
+                  style={{ minWidth: DAY_COLUMN_MIN_WIDTH }}
                 >
-                  <span className="text-[9px] uppercase tracking-[0.1em] text-muted-foreground sm:text-[10px] sm:tracking-[0.15em]">
+                  <span className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
                     {WEEKDAY_ABBR[i + 1]}
                   </span>
                   <span
                     className={cn(
-                      "text-mono flex h-6 w-6 items-center justify-center rounded-full text-xs sm:h-7 sm:w-7 sm:text-sm",
+                      "text-mono flex h-7 w-7 items-center justify-center rounded-full text-sm",
                       isToday ? "bg-gradient-primary font-semibold text-primary-foreground" : "text-foreground",
                     )}
                   >
@@ -209,8 +187,8 @@ export function ScheduleView({
             })}
           </div>
 
-          <div className={cn("flex divide-x border-b py-2", DIVIDER)}>
-            <div style={{ width: gutterWidth }} className="shrink-0" />
+          <div className={cn("flex divide-x border-b py-2", DIVIDE_GOLD, DIVIDER_NEUTRAL)}>
+            <div style={{ width: GUTTER_WIDTH }} className="shrink-0" />
             {byDay.map(({ dayKey, untimedTasks, untimedEvents }, i) => {
               const isToday = dayKey === todayKey();
               const untimed = [
@@ -222,8 +200,8 @@ export function ScheduleView({
               return (
                 <div
                   key={dayKey}
-                  className={cn("flex flex-1 flex-col items-center gap-1 px-1 sm:items-stretch", laneTint(i, isToday))}
-                  style={{ minWidth: columnMinWidth }}
+                  className={cn("flex flex-1 flex-col gap-1 px-1", laneTint(i, isToday))}
+                  style={{ minWidth: DAY_COLUMN_MIN_WIDTH }}
                 >
                   {visible.map((item) => {
                     const isDone = item.kind === "task" && item.task.done;
@@ -235,19 +213,16 @@ export function ScheduleView({
                         key={item.kind === "event" ? item.event.id : item.task.id}
                         title={title}
                         className={cn(
-                          "flex items-center gap-1 rounded-full border border-border text-[9px]",
+                          "flex items-center gap-1 truncate rounded-full border border-border px-1.5 py-0.5 text-[9px]",
                           isDone ? "text-muted-foreground line-through" : "bg-secondary/50",
-                          isCompact ? "h-2.5 w-2.5 justify-center p-0" : "truncate px-1.5 py-0.5",
                         )}
                       >
                         <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", dotColor)} />
-                        {!isCompact && <span className="truncate">{title}</span>}
+                        <span className="truncate">{title}</span>
                       </span>
                     );
                   })}
-                  {hidden > 0 && (
-                    <span className="px-1 text-[9px] text-muted-foreground">{isCompact ? `+${hidden}` : `+${hidden} mais`}</span>
-                  )}
+                  {hidden > 0 && <span className="px-1 text-[9px] text-muted-foreground">+{hidden} mais</span>}
                 </div>
               );
             })}
@@ -255,14 +230,14 @@ export function ScheduleView({
 
           <div ref={vScrollRef} className="relative max-h-[60vh] overflow-y-auto">
             <div className="relative flex" style={{ height: 24 * HOUR_HEIGHT }}>
-              <div className="relative shrink-0" style={{ width: gutterWidth }}>
+              <div className="relative shrink-0" style={{ width: GUTTER_WIDTH }}>
                 {Array.from({ length: 24 }, (_, h) => (
                   <span
                     key={h}
-                    className="absolute right-1 -translate-y-1/2 text-right text-[9px] text-muted-foreground/70 sm:right-2 sm:text-[10px]"
+                    className="absolute right-2 -translate-y-1/2 text-right text-[10px] text-muted-foreground/70"
                     style={{ top: h * HOUR_HEIGHT }}
                   >
-                    {isCompact ? h : `${String(h).padStart(2, "0")}h`}
+                    {String(h).padStart(2, "0")}:00
                   </span>
                 ))}
               </div>
@@ -274,7 +249,7 @@ export function ScheduleView({
                   return (
                     <div
                       key={i}
-                      className={cn("absolute inset-x-0 border-t", isHour ? DIVIDER : DIVIDER_SOFT)}
+                      className={cn("absolute inset-x-0 border-t", isHour ? DIVIDER_NEUTRAL : DIVIDER_NEUTRAL_SOFT)}
                       style={{ top: (minutes / 60) * HOUR_HEIGHT }}
                     />
                   );
@@ -285,8 +260,8 @@ export function ScheduleView({
                   return (
                     <div
                       key={dayKey}
-                      className={cn("relative flex-1 border-l", DIVIDER, laneTint(i, isToday))}
-                      style={{ minWidth: columnMinWidth }}
+                      className={cn("relative flex-1 border-l", DIVIDER_GOLD, laneTint(i, isToday))}
+                      style={{ minWidth: DAY_COLUMN_MIN_WIDTH }}
                     >
                       {isToday && (
                         <div
@@ -324,14 +299,8 @@ export function ScheduleView({
                                     : "border-border bg-secondary/60",
                               )}
                             >
-                              {isCompact ? (
-                                <span className="block truncate opacity-80">{t.time}</span>
-                              ) : (
-                                <>
-                                  <span className="block truncate font-medium">{t.title}</span>
-                                  <span className="block truncate opacity-80">{t.time}</span>
-                                </>
-                              )}
+                              <span className="block truncate font-medium">{t.title}</span>
+                              <span className="block truncate opacity-80">{t.time}</span>
                             </div>
                           );
                         }
@@ -345,14 +314,8 @@ export function ScheduleView({
                             className="absolute z-10 overflow-hidden rounded-md border border-border/70 bg-secondary/60 px-1.5 py-1 text-left text-[10px]"
                           >
                             <span className={cn("mb-0.5 block h-1 w-4 rounded-full", e.color)} />
-                            {isCompact ? (
-                              e.time && <span className="block truncate opacity-80">{e.time}</span>
-                            ) : (
-                              <>
-                                <span className="block truncate font-medium">{e.title}</span>
-                                {e.time && <span className="block truncate opacity-80">{e.time}</span>}
-                              </>
-                            )}
+                            <span className="block truncate font-medium">{e.title}</span>
+                            {e.time && <span className="block truncate opacity-80">{e.time}</span>}
                           </div>
                         );
                       })}
