@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef } from "react";
-import { ChevronLeft, ChevronRight, Check } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Task, CalEvent } from "@/store/types";
 import { dateKey, todayKey } from "@/store/useAppStore";
@@ -13,10 +13,21 @@ const DEFAULT_TASK_DURATION = 30; // minutes, when the task has none set
 const DEFAULT_EVENT_DURATION = 60;
 const MIN_BLOCK_HEIGHT = 26; // px — keeps very short/zero-duration blocks tappable
 const GUTTER_WIDTH = 48; // px — width of the shared hour-label column
-const DAY_COLUMN_MIN_WIDTH = 108; // px floor per day before the week scrolls horizontally
+const COMPACT_GUTTER_WIDTH = 28; // px — narrower gutter so 7 columns fit an iPhone with no drag
+const DAY_COLUMN_MIN_WIDTH = 108; // px floor per day on roomy screens
 const MAX_VISIBLE_UNTIMED = 2;
+/** Below this viewport width the whole week is squeezed to fit with no
+ * horizontal scroll — labels drop to just the time so 7 columns stay legible. */
+const COMPACT_BREAKPOINT = 640;
 
 const MONTH_ABBR = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
+
+// A hairline at `border-border`'s own contrast all but disappears against
+// this card's dark gradient background (both sit within a few % lightness
+// of each other) — `muted-foreground` is far lighter/darker than the card
+// in both themes, so even a faint tint of it reads as a real divider.
+const DIVIDER = "border-muted-foreground/25";
+const DIVIDER_SOFT = "border-muted-foreground/10";
 
 function shiftDate(key: string, deltaDays: number): string {
   const [y, m, d] = key.split("-").map(Number);
@@ -38,30 +49,59 @@ function formatWeekRange(weekDates: string[]): string {
   return `${fmt(weekDates[0])} – ${fmt(weekDates[6])}`;
 }
 
+/** Alternating day "lanes" (plus a distinct tint for today) so a column's
+ * boundaries stay obvious even where the divider line itself is faint. */
+function laneTint(index: number, isToday: boolean): string {
+  if (isToday) return "bg-primary/10";
+  return index % 2 === 1 ? "bg-muted-foreground/[0.04]" : "";
+}
+
 /**
  * A fixed, Google Calendar–style week grid: every day of the week (Mon–Sun)
  * side by side, sharing one hour ruler, so times line up across the whole
- * week instead of showing one day at a time. `date` is just an anchor —
- * any day within the week to display — not a "selected day".
+ * week instead of showing one day at a time. `date` is just an anchor — any
+ * day within the week to display — not a "selected day". Purely a viewer:
+ * nothing here is editable except events (tap one to open its edit dialog);
+ * tasks render as read-only status, matching the "just visual" nature of a
+ * cronograma vs. the actual task lists elsewhere in the app.
  */
 export function ScheduleView({
   date,
   onDateChange,
   tasks,
   events,
-  onToggleTask,
   renderEventTrigger,
 }: {
   date: string;
   onDateChange: (key: string) => void;
   tasks: Task[];
   events: CalEvent[];
-  onToggleTask: (id: string) => void;
   /** Lets the caller wrap each event block in its own edit dialog (Calendar.tsx owns EventDialog). */
   renderEventTrigger: (event: CalEvent, block: React.ReactNode) => React.ReactNode;
 }) {
   const vScrollRef = useRef<HTMLDivElement>(null);
   const hScrollRef = useRef<HTMLDivElement>(null);
+
+  const [isCompact, setIsCompact] = useState(
+    () => typeof window !== "undefined" && window.innerWidth < COMPACT_BREAKPOINT,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${COMPACT_BREAKPOINT - 1}px)`);
+    const handler = () => setIsCompact(mq.matches);
+    handler();
+    // Both listeners target the same check — some environments (older
+    // WebViews, devtools viewport overrides) resize without firing a
+    // MediaQueryList "change" event, so the plain "resize" is a fallback.
+    mq.addEventListener("change", handler);
+    window.addEventListener("resize", handler);
+    return () => {
+      mq.removeEventListener("change", handler);
+      window.removeEventListener("resize", handler);
+    };
+  }, []);
+
+  const gutterWidth = isCompact ? COMPACT_GUTTER_WIDTH : GUTTER_WIDTH;
+  const columnMinWidth = isCompact ? undefined : DAY_COLUMN_MIN_WIDTH;
 
   const weekDates = useMemo(() => {
     const start = mondayOf(date);
@@ -107,7 +147,7 @@ export function ScheduleView({
   }, [weekStart]);
 
   // Auto-scroll the week horizontally so the anchor day is in view — a
-  // no-op on desktop (the week already fits), useful on narrow screens.
+  // no-op once the compact layout makes every day fit with nothing to scroll.
   useEffect(() => {
     const container = hScrollRef.current;
     const target = container?.querySelector<HTMLElement>(`[data-day="${date}"]`);
@@ -115,7 +155,7 @@ export function ScheduleView({
     const contRect = container.getBoundingClientRect();
     const targRect = target.getBoundingClientRect();
     container.scrollLeft += targRect.left - contRect.left - (contRect.width - targRect.width) / 2;
-  }, [date]);
+  }, [date, isCompact]);
 
   const nowMinutes = new Date().getHours() * 60 + new Date().getMinutes();
 
@@ -141,10 +181,10 @@ export function ScheduleView({
       <div ref={hScrollRef} className="overflow-x-auto">
         <div
           className="overflow-hidden rounded-lg border border-border"
-          style={{ minWidth: GUTTER_WIDTH + DAY_COLUMN_MIN_WIDTH * 7 }}
+          style={{ minWidth: isCompact ? undefined : GUTTER_WIDTH + DAY_COLUMN_MIN_WIDTH * 7 }}
         >
-          <div className="flex divide-x divide-border border-b border-border pb-2">
-            <div style={{ width: GUTTER_WIDTH }} className="shrink-0" />
+          <div className={cn("flex divide-x border-b pb-2", DIVIDER)}>
+            <div style={{ width: gutterWidth }} className="shrink-0" />
             {weekDates.map((dayKey, i) => {
               const isToday = dayKey === todayKey();
               const [, , d] = dayKey.split("-").map(Number);
@@ -152,15 +192,15 @@ export function ScheduleView({
                 <div
                   key={dayKey}
                   data-day={dayKey}
-                  className="flex flex-1 flex-col items-center gap-1"
-                  style={{ minWidth: DAY_COLUMN_MIN_WIDTH }}
+                  className={cn("flex flex-1 flex-col items-center gap-1 py-0.5", laneTint(i, isToday))}
+                  style={{ minWidth: columnMinWidth }}
                 >
-                  <span className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+                  <span className="text-[9px] uppercase tracking-[0.1em] text-muted-foreground sm:text-[10px] sm:tracking-[0.15em]">
                     {WEEKDAY_ABBR[i + 1]}
                   </span>
                   <span
                     className={cn(
-                      "text-mono flex h-7 w-7 items-center justify-center rounded-full text-sm",
+                      "text-mono flex h-6 w-6 items-center justify-center rounded-full text-xs sm:h-7 sm:w-7 sm:text-sm",
                       isToday ? "bg-gradient-primary font-semibold text-primary-foreground" : "text-foreground",
                     )}
                   >
@@ -171,9 +211,10 @@ export function ScheduleView({
             })}
           </div>
 
-          <div className="flex divide-x divide-border border-b border-border py-2">
-            <div style={{ width: GUTTER_WIDTH }} className="shrink-0" />
-            {byDay.map(({ dayKey, untimedTasks, untimedEvents }) => {
+          <div className={cn("flex divide-x border-b py-2", DIVIDER)}>
+            <div style={{ width: gutterWidth }} className="shrink-0" />
+            {byDay.map(({ dayKey, untimedTasks, untimedEvents }, i) => {
+              const isToday = dayKey === todayKey();
               const untimed = [
                 ...untimedEvents.map((e) => ({ kind: "event" as const, event: e })),
                 ...untimedTasks.map((t) => ({ kind: "task" as const, task: t })),
@@ -181,41 +222,47 @@ export function ScheduleView({
               const visible = untimed.slice(0, MAX_VISIBLE_UNTIMED);
               const hidden = untimed.length - visible.length;
               return (
-                <div key={dayKey} className="flex flex-1 flex-col gap-1 px-1" style={{ minWidth: DAY_COLUMN_MIN_WIDTH }}>
+                <div
+                  key={dayKey}
+                  className={cn("flex flex-1 flex-col items-center gap-1 px-1 sm:items-stretch", laneTint(i, isToday))}
+                  style={{ minWidth: columnMinWidth }}
+                >
                   {visible.map((item) =>
                     item.kind === "event" ? (
                       renderEventTrigger(
                         item.event,
                         <span
                           key={item.event.id}
-                          className="flex cursor-pointer items-center gap-1 truncate rounded-full border border-border bg-secondary/50 px-1.5 py-0.5 text-[9px]"
+                          className={cn(
+                            "flex cursor-pointer items-center gap-1 rounded-full border border-border bg-secondary/50 text-[9px]",
+                            isCompact ? "h-2.5 w-2.5 justify-center p-0" : "truncate px-1.5 py-0.5",
+                          )}
+                          title={item.event.title}
                         >
                           <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", item.event.color)} />
-                          <span className="truncate">{item.event.title}</span>
+                          {!isCompact && <span className="truncate">{item.event.title}</span>}
                         </span>,
                       )
                     ) : (
-                      <button
+                      <span
                         key={item.task.id}
-                        onClick={() => onToggleTask(item.task.id)}
+                        title={item.task.title}
                         className={cn(
-                          "flex items-center gap-1 truncate rounded-full border px-1.5 py-0.5 text-[9px] transition-colors",
-                          item.task.done ? "border-border text-muted-foreground line-through" : "border-border bg-secondary/50",
+                          "flex items-center gap-1 rounded-full border border-border text-[9px]",
+                          item.task.done ? "text-muted-foreground line-through" : "bg-secondary/50",
+                          isCompact ? "h-2.5 w-2.5 justify-center p-0" : "truncate px-1.5 py-0.5",
                         )}
                       >
                         <span
-                          className={cn(
-                            "flex h-2.5 w-2.5 shrink-0 items-center justify-center rounded-full border",
-                            item.task.done ? "border-primary bg-gradient-primary" : "border-border",
-                          )}
-                        >
-                          {item.task.done && <Check className="h-1.5 w-1.5 text-primary-foreground" />}
-                        </span>
-                        <span className="truncate">{item.task.title}</span>
-                      </button>
+                          className={cn("h-1.5 w-1.5 shrink-0 rounded-full", item.task.done ? "bg-success" : "bg-muted-foreground/60")}
+                        />
+                        {!isCompact && <span className="truncate">{item.task.title}</span>}
+                      </span>
                     ),
                   )}
-                  {hidden > 0 && <span className="px-1 text-[9px] text-muted-foreground">+{hidden} mais</span>}
+                  {hidden > 0 && (
+                    <span className="px-1 text-[9px] text-muted-foreground">{isCompact ? `+${hidden}` : `+${hidden} mais`}</span>
+                  )}
                 </div>
               );
             })}
@@ -223,14 +270,14 @@ export function ScheduleView({
 
           <div ref={vScrollRef} className="relative max-h-[60vh] overflow-y-auto">
             <div className="relative flex" style={{ height: 24 * HOUR_HEIGHT }}>
-              <div className="relative shrink-0" style={{ width: GUTTER_WIDTH }}>
+              <div className="relative shrink-0" style={{ width: gutterWidth }}>
                 {Array.from({ length: 24 }, (_, h) => (
                   <span
                     key={h}
-                    className="absolute right-2 -translate-y-1/2 text-right text-[10px] text-muted-foreground/70"
+                    className="absolute right-1 -translate-y-1/2 text-right text-[9px] text-muted-foreground/70 sm:right-2 sm:text-[10px]"
                     style={{ top: h * HOUR_HEIGHT }}
                   >
-                    {String(h).padStart(2, "0")}h
+                    {isCompact ? h : `${String(h).padStart(2, "0")}h`}
                   </span>
                 ))}
               </div>
@@ -242,19 +289,19 @@ export function ScheduleView({
                   return (
                     <div
                       key={i}
-                      className={cn("absolute inset-x-0 border-t", isHour ? "border-border" : "border-border/30")}
+                      className={cn("absolute inset-x-0 border-t", isHour ? DIVIDER : DIVIDER_SOFT)}
                       style={{ top: (minutes / 60) * HOUR_HEIGHT }}
                     />
                   );
                 })}
 
-                {byDay.map(({ dayKey, blocks }) => {
+                {byDay.map(({ dayKey, blocks }, i) => {
                   const isToday = dayKey === todayKey();
                   return (
                     <div
                       key={dayKey}
-                      className="relative flex-1 border-l border-border"
-                      style={{ minWidth: DAY_COLUMN_MIN_WIDTH }}
+                      className={cn("relative flex-1 border-l", DIVIDER, laneTint(i, isToday))}
+                      style={{ minWidth: columnMinWidth }}
                     >
                       {isToday && (
                         <div
@@ -279,12 +326,12 @@ export function ScheduleView({
                         if (b.kind === "task") {
                           const t = b.task;
                           return (
-                            <button
+                            <div
                               key={b.id}
-                              onClick={() => onToggleTask(t.id)}
+                              title={t.title}
                               style={style}
                               className={cn(
-                                "absolute z-10 overflow-hidden rounded-md border px-1.5 py-1 text-left text-[10px] transition-opacity",
+                                "absolute z-10 overflow-hidden rounded-md border px-1.5 py-1 text-left text-[10px]",
                                 t.done
                                   ? "border-border bg-secondary/40 text-muted-foreground line-through opacity-70"
                                   : t.priority
@@ -292,9 +339,15 @@ export function ScheduleView({
                                     : "border-border bg-secondary/60",
                               )}
                             >
-                              <span className="block truncate font-medium">{t.title}</span>
-                              <span className="block truncate opacity-80">{t.time}</span>
-                            </button>
+                              {isCompact ? (
+                                <span className="block truncate opacity-80">{t.time}</span>
+                              ) : (
+                                <>
+                                  <span className="block truncate font-medium">{t.title}</span>
+                                  <span className="block truncate opacity-80">{t.time}</span>
+                                </>
+                              )}
+                            </div>
                           );
                         }
 
@@ -304,11 +357,18 @@ export function ScheduleView({
                           <button
                             key={b.id}
                             style={style}
+                            title={e.title}
                             className="absolute z-10 overflow-hidden rounded-md border border-border/70 bg-secondary/60 px-1.5 py-1 text-left text-[10px]"
                           >
                             <span className={cn("mb-0.5 block h-1 w-4 rounded-full", e.color)} />
-                            <span className="block truncate font-medium">{e.title}</span>
-                            {e.time && <span className="block truncate opacity-80">{e.time}</span>}
+                            {isCompact ? (
+                              e.time && <span className="block truncate opacity-80">{e.time}</span>
+                            ) : (
+                              <>
+                                <span className="block truncate font-medium">{e.title}</span>
+                                {e.time && <span className="block truncate opacity-80">{e.time}</span>}
+                              </>
+                            )}
                           </button>,
                         );
                       })}
