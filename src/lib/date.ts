@@ -20,6 +20,17 @@ export function capitalizeWords(value: string): string {
   return value.replace(/\b\p{L}/gu, (c) => c.toUpperCase());
 }
 
+/** Formats a "YYYY-MM-DD" key as a long pt-BR date, e.g. "Domingo, 02 de agosto". */
+export function formatLongDate(key: string): string {
+  const [y, m, d] = key.split("-").map(Number);
+  const label = new Date(y, m - 1, d).toLocaleDateString("pt-BR", {
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+  });
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
 const pad = (n: number) => String(n).padStart(2, "0");
 const toDateKey = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
