@@ -109,10 +109,17 @@ export interface Milestone extends NotifyOverride {
   deadline?: string; // YYYY-MM-DD
 }
 
+/** Which life area an item belongs to — the top-level split between the
+ * Pessoal and Profissional pages. Absent on data saved before this field
+ * existed; treated as "pessoal" wherever it's read (see resolveDomain in
+ * src/lib/domain.ts) so old goals/projects don't just disappear. */
+export type LifeDomain = "pessoal" | "profissional";
+
 export interface Goal extends NotifyOverride {
   id: string;
   name: string;
   category: string;
+  domain?: LifeDomain;
   deadline: string; // free text or YYYY-MM-DD
   milestones: Milestone[];
 }
@@ -129,6 +136,7 @@ export interface Project extends NotifyOverride {
   name: string;
   description: string;
   status: "Não Iniciado" | "Planejamento" | "Em andamento" | "Concluído";
+  domain?: LifeDomain;
   deadline: string;
   tasks: ProjectTask[];
 }

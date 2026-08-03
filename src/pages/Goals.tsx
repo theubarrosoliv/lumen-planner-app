@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { SectionHeader } from "@/components/SectionHeader";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,8 +18,10 @@ import { useCustomOptions } from "@/hooks/use-custom-options";
 import { useConfirmDelete } from "@/hooks/use-confirm-delete";
 import { useAppStore, useUserData } from "@/store/useAppStore";
 import { toast } from "sonner";
-import { Goal, Milestone, NotifyLeadUnit } from "@/store/types";
+import { Goal, Milestone, NotifyLeadUnit, LifeDomain } from "@/store/types";
 import { GoalsCharts } from "@/components/DashboardCharts";
+import { DOMAIN_LABEL, resolveDomain } from "@/lib/domain";
+import { cn } from "@/lib/utils";
 
 const CATEGORIES = ["Carreira", "Saúde", "Aprendizado", "Financeiro", "Pessoal"];
 
@@ -34,18 +35,43 @@ function fmtDate(d?: string) {
   return d;
 }
 
+function DomainToggle({ value, onChange }: { value: LifeDomain; onChange: (d: LifeDomain) => void }) {
+  return (
+    <div className="flex gap-1 rounded-lg border border-border bg-secondary/40 p-1 w-fit">
+      {(["pessoal", "profissional"] as const).map((d) => (
+        <button
+          key={d}
+          type="button"
+          onClick={() => onChange(d)}
+          className={cn(
+            "rounded-md px-3 py-1 text-xs uppercase tracking-[0.2em] transition-all",
+            value === d
+              ? "bg-gradient-primary text-primary-foreground shadow-soft"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          {DOMAIN_LABEL[d]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function GoalDialog({
   trigger,
   title,
   initial,
+  defaultDomain,
   onSave,
 }: {
   trigger: React.ReactNode;
   title: string;
   initial?: Partial<Goal>;
+  defaultDomain: LifeDomain;
   onSave: (v: {
     name: string;
     category: string;
+    domain: LifeDomain;
     deadline: string;
     notify?: boolean;
     notifyLeadValue?: number;
@@ -55,6 +81,7 @@ function GoalDialog({
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(initial?.name ?? "");
   const [category, setCategory] = useState(initial?.category ?? "Carreira");
+  const [domain, setDomain] = useState<LifeDomain>(initial ? resolveDomain(initial) : defaultDomain);
   const [deadline, setDeadline] = useState(initial?.deadline === "Sem prazo" ? "" : initial?.deadline ?? "");
   const [notify, setNotify] = useState(initial?.notify !== false);
   const [notifyLeadValue, setNotifyLeadValue] = useState<number | undefined>(initial?.notifyLeadValue);
@@ -72,6 +99,7 @@ function GoalDialog({
     onSave({
       name: name.trim(),
       category,
+      domain,
       deadline: deadline || "Sem prazo",
       notify,
       notifyLeadValue,
@@ -95,6 +123,10 @@ function GoalDialog({
           <div className="space-y-1.5">
             <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Nome</Label>
             <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Área da vida</Label>
+            <DomainToggle value={domain} onChange={setDomain} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
@@ -208,8 +240,11 @@ function MilestoneDialog({
   );
 }
 
-export default function Goals() {
-  const { goals } = useUserData();
+/** Renders the Metas view for one life area — used by both the Pessoal and
+ * Profissional pages (see LifeDomainPage.tsx), which own the shared
+ * SectionHeader and Metas/Projetos sub-tab around this. */
+export function GoalsSection({ domain }: { domain: LifeDomain }) {
+  const { goals: allGoals } = useUserData();
   const addGoal = useAppStore((s) => s.addGoal);
   const updateGoal = useAppStore((s) => s.updateGoal);
   const removeGoal = useAppStore((s) => s.removeGoal);
@@ -219,30 +254,27 @@ export default function Goals() {
   const removeMilestone = useAppStore((s) => s.removeMilestone);
   const { requestDelete, dialog } = useConfirmDelete();
 
+  const goals = allGoals.filter((g) => resolveDomain(g) === domain);
   const [newMs, setNewMs] = useState<Record<string, { name: string; deadline: string }>>({});
 
   return (
-    <div className="mx-auto max-w-6xl">
-      <SectionHeader
-        eyebrow="Metas"
-        title="Onde você quer chegar."
-        description="Defina marcos com prazos claros. Edite, ajuste e siga em frente."
-        action={
-          <GoalDialog
-            title="Nova meta"
-            onSave={(v) => addGoal({ ...v, milestones: [] })}
-            trigger={
-              <Button className="bg-gradient-primary shadow-elegant">
-                <Plus className="mr-1 h-4 w-4" /> Nova meta
-              </Button>
-            }
-          />
-        }
-      />
+    <div>
+      <div className="mb-6 flex justify-end">
+        <GoalDialog
+          title="Nova meta"
+          defaultDomain={domain}
+          onSave={(v) => addGoal({ ...v, milestones: [] })}
+          trigger={
+            <Button className="bg-gradient-primary shadow-elegant">
+              <Plus className="mr-1 h-4 w-4" /> Nova meta
+            </Button>
+          }
+        />
+      </div>
 
       {goals.length > 0 && (
         <div className="mb-6">
-          <GoalsCharts />
+          <GoalsCharts domain={domain} />
         </div>
       )}
 
@@ -284,6 +316,7 @@ export default function Goals() {
                         <GoalDialog
                           title="Editar meta"
                           initial={g}
+                          defaultDomain={domain}
                           onSave={(v) => updateGoal(g.id, v)}
                           trigger={
                             <button className="opacity-100 transition-opacity hover:text-primary-glow md:opacity-0 md:group-hover:opacity-100">

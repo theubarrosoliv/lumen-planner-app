@@ -2,6 +2,7 @@ import { TaskPriority, TaskRecurrence, UserData } from "@/store/types";
 import { itemTags } from "@/lib/tags";
 import { timeToMinutes } from "@/lib/timeline";
 import { PRIORITY_ORDER } from "@/lib/priority";
+import { resolveDomain } from "@/lib/domain";
 
 export type AgendaItemKind = "task" | "event" | "project" | "project-task" | "goal" | "milestone";
 
@@ -27,6 +28,9 @@ export interface AgendaItem {
   tags?: string[];
   /** Route to jump to for kinds that aren't editable inline from Agenda. */
   linkTo?: string;
+  /** For goal/milestone/project/project-task: which sub-tab `linkTo`'s
+   * Pessoal/Profissional page should land on. */
+  subTab?: "metas" | "projetos";
 }
 
 /** Projects/goals default to the free-text placeholders "—"/"Sem prazo" when
@@ -67,6 +71,7 @@ export function buildAgendaItems(data: UserData): AgendaItem[] {
   }
 
   for (const p of data.projects) {
+    const projectLinkTo = `/${resolveDomain(p)}`;
     if (isRealDate(p.deadline)) {
       items.push({
         id: `project-${p.id}`,
@@ -75,7 +80,8 @@ export function buildAgendaItems(data: UserData): AgendaItem[] {
         date: p.deadline,
         title: p.name,
         done: p.status === "Concluído",
-        linkTo: "/projetos",
+        linkTo: projectLinkTo,
+        subTab: "projetos",
       });
     }
     for (const pt of p.tasks) {
@@ -89,13 +95,15 @@ export function buildAgendaItems(data: UserData): AgendaItem[] {
           date: pt.deadline,
           title: pt.title,
           done: pt.done,
-          linkTo: "/projetos",
+          linkTo: projectLinkTo,
+          subTab: "projetos",
         });
       }
     }
   }
 
   for (const g of data.goals) {
+    const goalLinkTo = `/${resolveDomain(g)}`;
     if (isRealDate(g.deadline)) {
       const allDone = g.milestones.length > 0 && g.milestones.every((m) => m.done);
       items.push({
@@ -105,7 +113,8 @@ export function buildAgendaItems(data: UserData): AgendaItem[] {
         date: g.deadline,
         title: g.name,
         done: allDone,
-        linkTo: "/metas",
+        linkTo: goalLinkTo,
+        subTab: "metas",
       });
     }
     for (const m of g.milestones) {
@@ -119,7 +128,8 @@ export function buildAgendaItems(data: UserData): AgendaItem[] {
           date: m.deadline,
           title: m.name,
           done: m.done,
-          linkTo: "/metas",
+          linkTo: goalLinkTo,
+          subTab: "metas",
         });
       }
     }

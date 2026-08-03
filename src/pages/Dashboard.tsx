@@ -199,7 +199,7 @@ export default function Dashboard() {
           <div className="mt-6 rounded-2xl border border-border bg-gradient-card p-6">
             <div className="mb-5 flex items-center justify-between">
               <h2 className="font-display text-2xl">Metas em movimento</h2>
-              <Link to="/metas">
+              <Link to="/pessoal" state={{ subTab: "metas" }}>
                 <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
                   Ver todas <ArrowUpRight className="ml-1 h-3.5 w-3.5" />
                 </Button>
@@ -315,7 +315,7 @@ export default function Dashboard() {
               </span>
             </div>
             {projects.length === 0 ? (
-              <Link to="/projetos">
+              <Link to="/pessoal" state={{ subTab: "projetos" }}>
                 <div className="rounded-xl border border-dashed border-border py-8 text-center hover:border-primary/40">
                   <p className="text-sm text-muted-foreground">Criar primeiro projeto</p>
                 </div>

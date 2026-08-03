@@ -4,8 +4,8 @@ import {
   CheckCircle2,
   Calendar,
   Repeat,
-  Target,
-  FolderKanban,
+  User,
+  Briefcase,
   Network,
   Plus,
   MoreHorizontal,
@@ -24,9 +24,9 @@ import { GlobalSearch } from "@/components/GlobalSearch";
  * Mobile-only bottom tab bar, replacing the hamburger drawer as the primary
  * way to move around on a phone. Início/home now lives behind the logo mark
  * in the header (see AppLayout.tsx) instead of a bar slot. Agenda/Hábitos/
- * Calendário sit directly on the bar; Metas/Projetos/Mapa Mental live behind
- * "Mais". The center button is a raised quick-add, not a nav destination.
- * Hidden from `md` up, where the sidebar rail takes over.
+ * Calendário sit directly on the bar; Pessoal/Profissional/Mapa Mental live
+ * behind "Mais". The center button is a raised quick-add, not a nav
+ * destination. Hidden from `md` up, where the sidebar rail takes over.
  */
 const mainTabs = [
   { to: "/agenda", label: "Agenda", icon: CheckCircle2, end: false },
@@ -34,8 +34,8 @@ const mainTabs = [
 ];
 
 const moreTabs = [
-  { to: "/metas", label: "Metas", icon: Target },
-  { to: "/projetos", label: "Projetos", icon: FolderKanban },
+  { to: "/pessoal", label: "Pessoal", icon: User },
+  { to: "/profissional", label: "Profissional", icon: Briefcase },
   { to: "/mapas", label: "Mapa Mental", icon: Network },
 ];
 

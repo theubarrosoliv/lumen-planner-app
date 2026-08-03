@@ -3,8 +3,8 @@ import {
   LayoutDashboard,
   Calendar,
   CheckCircle2,
-  Target,
-  FolderKanban,
+  User,
+  Briefcase,
   Repeat,
   Network,
 } from "lucide-react";
@@ -30,8 +30,8 @@ const main = [
 
 const focus = [
   { title: "Hábitos", url: "/habitos", icon: Repeat },
-  { title: "Metas", url: "/metas", icon: Target },
-  { title: "Projetos", url: "/projetos", icon: FolderKanban },
+  { title: "Pessoal", url: "/pessoal", icon: User },
+  { title: "Profissional", url: "/profissional", icon: Briefcase },
   { title: "Mapa Mental", url: "/mapas", icon: Network },
 ];
 

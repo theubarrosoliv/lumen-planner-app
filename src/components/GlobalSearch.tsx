@@ -10,6 +10,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { useUserData } from "@/store/useAppStore";
+import { resolveDomain } from "@/lib/domain";
 
 /**
  * App-wide quick jump: Cmd/Ctrl+K, or the fixed bottom-right bubble (the same
@@ -36,9 +37,9 @@ export function GlobalSearch() {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  const go = (to: string) => {
+  const go = (to: string, subTab?: "metas" | "projetos") => {
     setOpen(false);
-    navigate(to);
+    navigate(to, subTab ? { state: { subTab } } : undefined);
   };
 
   return (
@@ -77,7 +78,7 @@ export function GlobalSearch() {
           {goals.length > 0 && (
             <CommandGroup heading="Metas">
               {goals.map((g) => (
-                <CommandItem key={g.id} value={`meta ${g.name}`} onSelect={() => go("/metas")}>
+                <CommandItem key={g.id} value={`meta ${g.name}`} onSelect={() => go(`/${resolveDomain(g)}`, "metas")}>
                   <Target className="mr-2 h-4 w-4 text-muted-foreground" />
                   {g.name}
                 </CommandItem>
@@ -87,7 +88,7 @@ export function GlobalSearch() {
           {projects.length > 0 && (
             <CommandGroup heading="Projetos">
               {projects.map((p) => (
-                <CommandItem key={p.id} value={`projeto ${p.name}`} onSelect={() => go("/projetos")}>
+                <CommandItem key={p.id} value={`projeto ${p.name}`} onSelect={() => go(`/${resolveDomain(p)}`, "projetos")}>
                   <FolderKanban className="mr-2 h-4 w-4 text-muted-foreground" />
                   {p.name}
                 </CommandItem>

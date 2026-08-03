@@ -29,6 +29,7 @@ export const createGoalsSlice = (
               id: uid(),
               name: g.name,
               category: g.category,
+              domain: g.domain,
               deadline: g.deadline,
               notify: g.notify,
               notifyLeadValue: g.notifyLeadValue,
