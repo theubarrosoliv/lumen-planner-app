@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { SectionHeader } from "@/components/SectionHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +37,7 @@ import { itemTags } from "@/lib/tags";
 import { PRIORITY_STYLE } from "@/lib/priority";
 import { describeRecurrence } from "@/lib/date";
 import { materializeRecurringTask, splitWeekdayTask } from "@/lib/tasks";
+import { ITEM_COLORS } from "@/lib/colors";
 import {
   AgendaItem,
   AgendaItemKind,
@@ -63,12 +64,14 @@ function TaskDialog({
   onSave,
   trigger,
   title,
+  autoOpen,
 }: {
   initial?: Partial<Task>;
   onSave: (t: {
     time: string;
     title: string;
     tags: string[];
+    color?: string;
     date: string;
     notes?: string;
     priority?: TaskPriority;
@@ -82,11 +85,15 @@ function TaskDialog({
   }) => void;
   trigger: React.ReactNode;
   title: string;
+  /** Opens this instance on mount — used to deep-link here from the
+   * Cronograma, which can't edit tasks itself and sends the user here instead. */
+  autoOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(() => !!autoOpen);
   const [text, setText] = useState(initial?.title ?? "");
   const [time, setTime] = useState(initial?.time && initial.time !== "—" ? initial.time : "");
   const [tags, setTags] = useState<string[]>(initial ? itemTags(initial) : []);
+  const [color, setColor] = useState(initial?.color);
   const [date, setDate] = useState(initial?.date ?? todayKey());
   const [priority, setPriority] = useState<TaskPriority | "none">(initial?.priority ?? "none");
   const [recurrence, setRecurrence] = useState<TaskRecurrence | "none">(initial?.recurrence ?? "none");
@@ -121,6 +128,7 @@ function TaskDialog({
       title: text.trim(),
       time: time || "—",
       tags,
+      color,
       date,
       priority: priority === "none" ? undefined : priority,
       recurrence: recurrence === "none" ? undefined : recurrence,
@@ -136,6 +144,7 @@ function TaskDialog({
       setText("");
       setTime("");
       setTags([]);
+      setColor(undefined);
       setPriority("none");
       setRecurrence("none");
       setWeekdays([]);
@@ -200,6 +209,32 @@ function TaskDialog({
                   <SelectItem value="low">Baixa</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Cor</Label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setColor(undefined)}
+                className={`flex h-8 w-8 items-center justify-center rounded-full border-2 border-dashed transition-all ${
+                  !color ? "border-foreground" : "border-border"
+                }`}
+                title="Sem cor"
+              >
+                <span className="h-3 w-3 rounded-full bg-muted-foreground/40" />
+              </button>
+              {ITEM_COLORS.map((c) => (
+                <button
+                  key={c.v}
+                  type="button"
+                  onClick={() => setColor(c.v)}
+                  className={`h-8 w-8 rounded-full border-2 transition-all ${c.v} ${
+                    color === c.v ? "border-foreground scale-110" : "border-transparent"
+                  }`}
+                  title={c.label}
+                />
+              ))}
             </div>
           </div>
           <div className="space-y-1.5">
@@ -302,6 +337,7 @@ const isToggleableKind = (k: AgendaItemKind) =>
 export default function Agenda() {
   const data = useUserData();
   const navigate = useNavigate();
+  const location = useLocation();
   const addTask = useAppStore((s) => s.addTask);
   const toggleTask = useAppStore((s) => s.toggleTask);
   const removeTask = useAppStore((s) => s.removeTask);
@@ -310,8 +346,21 @@ export default function Agenda() {
   const toggleMilestone = useAppStore((s) => s.toggleMilestone);
   const { requestDelete, dialog } = useConfirmDelete();
 
-  const [filter, setFilter] = useState<"hoje" | "semana" | "todas">("hoje");
+  // Deep-link from the Cronograma, which can't edit tasks itself: land here
+  // with the specific task's edit dialog already open. "todas" as the
+  // initial filter guarantees the task is in the list regardless of its
+  // date — otherwise the default "hoje" filter could hide it entirely and
+  // the dialog would never mount.
+  const openTaskId = (location.state as { openTaskId?: string } | null)?.openTaskId;
+  const [filter, setFilter] = useState<"hoje" | "semana" | "todas">(openTaskId ? "todas" : "hoje");
   const [sort, setSort] = useState<"padrao" | "horario" | "prioridade">("padrao");
+
+  useEffect(() => {
+    if (openTaskId) navigate(location.pathname, { replace: true, state: null });
+    // Only ever consume the deep-link state once, right after the initial
+    // render lets the targeted TaskDialog pick it up — not on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const items = useMemo(() => buildAgendaItems(data), [data]);
   const filtered = useMemo(() => {
@@ -468,6 +517,7 @@ export default function Agenda() {
                       <TaskDialog
                         title="Editar tarefa"
                         initial={task}
+                        autoOpen={task.id === openTaskId}
                         onSave={(patch) => {
                           const [first, ...rest] = splitWeekdayTask(patch);
                           updateTask(task.id, first);

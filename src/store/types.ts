@@ -41,6 +41,10 @@ export interface Task extends NotifyOverride {
    * multi-tag change still read correctly (see src/lib/tags.ts). */
   tag?: string;
   tags?: string[];
+  /** User-chosen accent (a `bg-*` class, same convention as `CalEvent.color`)
+   * shown as a small dot/bar in the Cronograma — independent of `priority`,
+   * which drives the block's background tint instead. */
+  color?: string;
   priority?: TaskPriority;
   /** When set, completing the task creates its next occurrence automatically. */
   recurrence?: TaskRecurrence;

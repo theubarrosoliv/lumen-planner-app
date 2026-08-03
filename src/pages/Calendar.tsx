@@ -32,6 +32,7 @@ import { itemTags } from "@/lib/tags";
 import { timeToMinutes } from "@/lib/timeline";
 import { PRIORITY_BLOCK_STYLE } from "@/lib/priority";
 import { formatLongDate } from "@/lib/date";
+import { ITEM_COLORS } from "@/lib/colors";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -47,14 +48,6 @@ const monthNames = [
   "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro",
 ];
 const dayLabels = ["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"];
-
-const COLORS = [
-  { v: "bg-primary", label: "Bronze" },
-  { v: "bg-primary-glow", label: "Bronze claro" },
-  { v: "bg-success", label: "Verde" },
-  { v: "bg-warning", label: "Âmbar" },
-  { v: "bg-destructive", label: "Vermelho" },
-];
 
 export function EventDialog({
   trigger,
@@ -161,7 +154,7 @@ export function EventDialog({
           <div className="space-y-1.5">
             <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Cor</Label>
             <div className="flex gap-2">
-              {COLORS.map((c) => (
+              {ITEM_COLORS.map((c) => (
                 <button
                   key={c.v}
                   type="button"
@@ -367,7 +360,21 @@ export default function CalendarPage() {
       </div>
 
       {view === "cronograma" ? (
-        <ScheduleView date={scheduleDate} onDateChange={setScheduleDate} tasks={tasks} events={events} />
+        <ScheduleView
+          date={scheduleDate}
+          onDateChange={setScheduleDate}
+          tasks={tasks}
+          events={events}
+          renderEventTrigger={(event, block) => (
+            <EventDialog
+              key={event.id}
+              title="Editar evento"
+              initial={event}
+              onSave={(v) => updateEvent(event.id, v)}
+              trigger={block}
+            />
+          )}
+        />
       ) : (
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="rounded-2xl border border-border bg-gradient-card p-4 md:p-6">

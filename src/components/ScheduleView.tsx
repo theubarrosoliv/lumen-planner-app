@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Task, CalEvent } from "@/store/types";
@@ -6,6 +7,7 @@ import { dateKey, todayKey } from "@/store/useAppStore";
 import { timeToMinutes, layoutTimeline } from "@/lib/timeline";
 import { PRIORITY_BLOCK_STYLE } from "@/lib/priority";
 import { isoWeekday, WEEKDAY_ABBR } from "@/lib/date";
+import { itemTags } from "@/lib/tags";
 import { cn } from "@/lib/utils";
 
 const HOUR_HEIGHT = 56; // px per hour
@@ -57,27 +59,40 @@ function laneTint(index: number, isToday: boolean): string {
   return index % 2 === 1 ? "bg-muted-foreground/[0.04]" : "";
 }
 
+/** Tooltip text: title, plus tags if any — the block itself is too small to
+ * show tags inline, so this is the only place they surface in the Cronograma. */
+function itemTooltip(title: string, item: { tag?: string; tags?: string[] }): string {
+  const tags = itemTags(item);
+  return tags.length > 0 ? `${title} (${tags.join(", ")})` : title;
+}
+
 /**
  * A fixed, Google Calendar–style week grid: every day of the week (Mon–Sun)
  * side by side, sharing one hour ruler, so times line up across the whole
  * week instead of showing one day at a time. `date` is just an anchor — any
- * day within the week to display — not a "selected day". Purely a read-only
- * viewer: nothing here can be edited, completed, or deleted — that happens
- * in the actual task/habit/event screens — this is just a picture of the week.
+ * day within the week to display — not a "selected day". Tasks are read-only
+ * here (tap one to jump to Agenda, where it actually lives); events open
+ * their edit dialog in place, since Calendar.tsx is already their home.
  */
 export function ScheduleView({
   date,
   onDateChange,
   tasks,
   events,
+  renderEventTrigger,
 }: {
   date: string;
   onDateChange: (key: string) => void;
   tasks: Task[];
   events: CalEvent[];
+  /** Lets the caller wrap each event block in its own edit dialog (Calendar.tsx owns EventDialog). */
+  renderEventTrigger: (event: CalEvent, block: React.ReactNode) => React.ReactNode;
 }) {
+  const navigate = useNavigate();
   const vScrollRef = useRef<HTMLDivElement>(null);
   const hScrollRef = useRef<HTMLDivElement>(null);
+
+  const goToTask = (t: Task) => navigate("/agenda", { state: { openTaskId: t.id } });
 
   const weekDates = useMemo(() => {
     const start = mondayOf(date);
@@ -203,25 +218,39 @@ export function ScheduleView({
                   className={cn("flex flex-1 flex-col gap-1 px-1", laneTint(i, isToday))}
                   style={{ minWidth: DAY_COLUMN_MIN_WIDTH }}
                 >
-                  {visible.map((item) => {
-                    const isDone = item.kind === "task" && item.task.done;
-                    const title = item.kind === "event" ? item.event.title : item.task.title;
-                    const dotColor =
-                      item.kind === "event" ? item.event.color : isDone ? "bg-success" : "bg-muted-foreground/60";
-                    return (
-                      <span
-                        key={item.kind === "event" ? item.event.id : item.task.id}
-                        title={title}
+                  {visible.map((item) =>
+                    item.kind === "event" ? (
+                      renderEventTrigger(
+                        item.event,
+                        <span
+                          key={item.event.id}
+                          title={itemTooltip(item.event.title, item.event)}
+                          className="flex cursor-pointer items-center gap-1 truncate rounded-full border border-border bg-secondary/50 px-1.5 py-0.5 text-[9px]"
+                        >
+                          <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", item.event.color)} />
+                          <span className="truncate">{item.event.title}</span>
+                        </span>,
+                      )
+                    ) : (
+                      <button
+                        key={item.task.id}
+                        onClick={() => goToTask(item.task)}
+                        title={itemTooltip(item.task.title, item.task)}
                         className={cn(
-                          "flex items-center gap-1 truncate rounded-full border border-border px-1.5 py-0.5 text-[9px]",
-                          isDone ? "text-muted-foreground line-through" : "bg-secondary/50",
+                          "flex items-center gap-1 truncate rounded-full border border-border px-1.5 py-0.5 text-left text-[9px] transition-colors hover:border-primary/50",
+                          item.task.done ? "text-muted-foreground line-through" : "bg-secondary/50",
                         )}
                       >
-                        <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", dotColor)} />
-                        <span className="truncate">{title}</span>
-                      </span>
-                    );
-                  })}
+                        <span
+                          className={cn(
+                            "h-1.5 w-1.5 shrink-0 rounded-full",
+                            item.task.color ?? (item.task.done ? "bg-success" : "bg-muted-foreground/60"),
+                          )}
+                        />
+                        <span className="truncate">{item.task.title}</span>
+                      </button>
+                    ),
+                  )}
                   {hidden > 0 && <span className="px-1 text-[9px] text-muted-foreground">+{hidden} mais</span>}
                 </div>
               );
@@ -286,12 +315,13 @@ export function ScheduleView({
                         if (b.kind === "task") {
                           const t = b.task;
                           return (
-                            <div
+                            <button
                               key={b.id}
-                              title={t.title}
+                              title={itemTooltip(t.title, t)}
+                              onClick={() => goToTask(t)}
                               style={style}
                               className={cn(
-                                "absolute z-10 overflow-hidden rounded-md border px-1.5 py-1 text-left text-[10px]",
+                                "absolute z-10 overflow-hidden rounded-md border px-1.5 py-1 text-left text-[10px] transition-colors hover:border-primary/50",
                                 t.done
                                   ? "border-border bg-secondary/40 text-muted-foreground line-through opacity-70"
                                   : t.priority
@@ -299,24 +329,26 @@ export function ScheduleView({
                                     : "border-border bg-secondary/60",
                               )}
                             >
+                              {t.color && <span className={cn("mb-0.5 block h-1 w-4 rounded-full", t.color)} />}
                               <span className="block truncate font-medium">{t.title}</span>
                               <span className="block truncate opacity-80">{t.time}</span>
-                            </div>
+                            </button>
                           );
                         }
 
                         const e = b.event;
-                        return (
-                          <div
+                        return renderEventTrigger(
+                          e,
+                          <button
                             key={b.id}
                             style={style}
-                            title={e.title}
+                            title={itemTooltip(e.title, e)}
                             className="absolute z-10 overflow-hidden rounded-md border border-border/70 bg-secondary/60 px-1.5 py-1 text-left text-[10px]"
                           >
                             <span className={cn("mb-0.5 block h-1 w-4 rounded-full", e.color)} />
                             <span className="block truncate font-medium">{e.title}</span>
                             {e.time && <span className="block truncate opacity-80">{e.time}</span>}
-                          </div>
+                          </button>,
                         );
                       })}
                     </div>
