@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { SectionHeader } from "@/components/SectionHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,8 +15,10 @@ import { NotifyField } from "@/components/NotifyField";
 import { useConfirmDelete } from "@/hooks/use-confirm-delete";
 import { useAppStore, useUserData } from "@/store/useAppStore";
 import { toast } from "sonner";
-import { Project, ProjectTask, NotifyLeadUnit } from "@/store/types";
+import { Project, ProjectTask, NotifyLeadUnit, LifeDomain } from "@/store/types";
 import { ProjectsCharts } from "@/components/DashboardCharts";
+import { DOMAIN_LABEL, resolveDomain } from "@/lib/domain";
+import { cn } from "@/lib/utils";
 
 const STATUS_STYLES: Record<Project["status"], string> = {
   Concluído: "border-success/40 text-success",
@@ -35,20 +36,45 @@ function fmtDate(d?: string) {
   return d;
 }
 
+function DomainToggle({ value, onChange }: { value: LifeDomain; onChange: (d: LifeDomain) => void }) {
+  return (
+    <div className="flex gap-1 rounded-lg border border-border bg-secondary/40 p-1 w-fit">
+      {(["pessoal", "profissional"] as const).map((d) => (
+        <button
+          key={d}
+          type="button"
+          onClick={() => onChange(d)}
+          className={cn(
+            "rounded-md px-3 py-1 text-xs uppercase tracking-[0.2em] transition-all",
+            value === d
+              ? "bg-gradient-primary text-primary-foreground shadow-soft"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          {DOMAIN_LABEL[d]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function ProjectDialog({
   trigger,
   title,
   initial,
+  defaultDomain,
   onSave,
 }: {
   trigger: React.ReactNode;
   title: string;
   initial?: Partial<Project>;
+  defaultDomain: LifeDomain;
   onSave: (v: {
     name: string;
     description: string;
     deadline: string;
     status: Project["status"];
+    domain: LifeDomain;
     notify?: boolean;
     notifyLeadValue?: number;
     notifyLeadUnit?: NotifyLeadUnit;
@@ -59,6 +85,7 @@ function ProjectDialog({
   const [description, setDescription] = useState(initial?.description ?? "");
   const [deadline, setDeadline] = useState(initial?.deadline && initial.deadline !== "—" ? initial.deadline : "");
   const [status, setStatus] = useState<Project["status"]>(initial?.status ?? "Não Iniciado");
+  const [domain, setDomain] = useState<LifeDomain>(initial ? resolveDomain(initial) : defaultDomain);
   const [notify, setNotify] = useState(initial?.notify !== false);
   const [notifyLeadValue, setNotifyLeadValue] = useState<number | undefined>(initial?.notifyLeadValue);
   const [notifyLeadUnit, setNotifyLeadUnit] = useState<NotifyLeadUnit>(initial?.notifyLeadUnit ?? "days");
@@ -70,6 +97,7 @@ function ProjectDialog({
       description: description.trim(),
       deadline: deadline || "—",
       status,
+      domain,
       notify,
       notifyLeadValue,
       notifyLeadUnit,
@@ -98,6 +126,10 @@ function ProjectDialog({
           <div className="space-y-1.5">
             <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Descrição</Label>
             <Input value={description} onChange={(e) => setDescription(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Área da vida</Label>
+            <DomainToggle value={domain} onChange={setDomain} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
@@ -210,8 +242,11 @@ function ProjectTaskDialog({
   );
 }
 
-export default function Projects() {
-  const { projects } = useUserData();
+/** Renders the Projetos view for one life area — used by both the Pessoal
+ * and Profissional pages (see LifeDomainPage.tsx), which own the shared
+ * SectionHeader and Metas/Projetos sub-tab around this. */
+export function ProjectsSection({ domain }: { domain: LifeDomain }) {
+  const { projects: allProjects } = useUserData();
   const addProject = useAppStore((s) => s.addProject);
   const updateProject = useAppStore((s) => s.updateProject);
   const removeProject = useAppStore((s) => s.removeProject);
@@ -221,31 +256,28 @@ export default function Projects() {
   const removeProjectTask = useAppStore((s) => s.removeProjectTask);
   const { requestDelete, dialog } = useConfirmDelete();
 
+  const projects = allProjects.filter((p) => resolveDomain(p) === domain);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [newTask, setNewTask] = useState<Record<string, { title: string; deadline: string }>>({});
 
   return (
-    <div className="mx-auto max-w-6xl">
-      <SectionHeader
-        eyebrow="Projetos"
-        title="Trabalhos com começo, meio e fim."
-        description="Organize iniciativas em fases e tarefas com prazo."
-        action={
-          <ProjectDialog
-            title="Novo projeto"
-            onSave={(v) => addProject(v)}
-            trigger={
-              <Button className="bg-gradient-primary shadow-elegant">
-                <Plus className="mr-1 h-4 w-4" /> Novo projeto
-              </Button>
-            }
-          />
-        }
-      />
+    <div>
+      <div className="mb-6 flex justify-end">
+        <ProjectDialog
+          title="Novo projeto"
+          defaultDomain={domain}
+          onSave={(v) => addProject(v)}
+          trigger={
+            <Button className="bg-gradient-primary shadow-elegant">
+              <Plus className="mr-1 h-4 w-4" /> Novo projeto
+            </Button>
+          }
+        />
+      </div>
 
       {projects.length > 0 && (
         <div className="mb-6">
-          <ProjectsCharts />
+          <ProjectsCharts domain={domain} />
         </div>
       )}
 
@@ -283,6 +315,7 @@ export default function Projects() {
                     <ProjectDialog
                       title="Editar projeto"
                       initial={p}
+                      defaultDomain={domain}
                       onSave={(v) => updateProject(p.id, v)}
                       trigger={
                         <button className="opacity-100 transition-opacity hover:text-primary-glow md:opacity-0 md:group-hover:opacity-100">

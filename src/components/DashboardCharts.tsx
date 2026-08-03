@@ -12,8 +12,9 @@ import {
   YAxis,
 } from "recharts";
 import { useUserData } from "@/store/useAppStore";
-import { HabitFrequency } from "@/store/types";
+import { HabitFrequency, LifeDomain } from "@/store/types";
 import { FREQUENCY_LABEL, lastNPeriods, streakOf } from "@/lib/habits";
+import { resolveDomain } from "@/lib/domain";
 import { TrendingUp, Flame, Target, Layers } from "lucide-react";
 
 // Only the three calendar-uniform kinds are offered as tabs here — the
@@ -225,8 +226,9 @@ export function HabitsCharts() {
   );
 }
 
-export function GoalsCharts() {
-  const { goals } = useUserData();
+export function GoalsCharts({ domain }: { domain?: LifeDomain } = {}) {
+  const { goals: allGoals } = useUserData();
+  const goals = domain ? allGoals.filter((g) => resolveDomain(g) === domain) : allGoals;
   const goalData = useMemo(
     () =>
       goals.map((g) => {
@@ -281,8 +283,9 @@ export function GoalsCharts() {
   );
 }
 
-export function ProjectsCharts() {
-  const { projects } = useUserData();
+export function ProjectsCharts({ domain }: { domain?: LifeDomain } = {}) {
+  const { projects: allProjects } = useUserData();
+  const projects = domain ? allProjects.filter((p) => resolveDomain(p) === domain) : allProjects;
   const projectData = useMemo(
     () =>
       projects.map((p) => {

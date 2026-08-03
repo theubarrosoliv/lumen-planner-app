@@ -12,8 +12,8 @@ import ResetPassword from "./pages/ResetPassword";
 import Agenda from "./pages/Agenda";
 import CalendarPage from "./pages/Calendar";
 import Habits from "./pages/Habits";
-import Goals from "./pages/Goals";
-import Projects from "./pages/Projects";
+import Pessoal from "./pages/Pessoal";
+import Profissional from "./pages/Profissional";
 import MindMaps from "./pages/MindMaps";
 import MindMapPage from "./pages/MindMap";
 import Notifications from "./pages/Notifications";
@@ -59,8 +59,8 @@ const App = () => (
                 <Route path="/agenda" element={<Agenda />} />
                 <Route path="/calendario" element={<CalendarPage />} />
                 <Route path="/habitos" element={<Habits />} />
-                <Route path="/metas" element={<Goals />} />
-                <Route path="/projetos" element={<Projects />} />
+                <Route path="/pessoal" element={<Pessoal />} />
+                <Route path="/profissional" element={<Profissional />} />
                 <Route path="/mapas" element={<MindMaps />} />
                 <Route path="/mapas/:id" element={<MindMapPage />} />
                 <Route path="/notificacoes" element={<Notifications />} />

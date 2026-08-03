@@ -406,7 +406,7 @@ export default function Agenda() {
                     </button>
                   ) : (
                     <button
-                      onClick={() => it.linkTo && navigate(it.linkTo)}
+                      onClick={() => it.linkTo && navigate(it.linkTo, { state: { subTab: it.subTab } })}
                       aria-label={`Ver em ${KIND_LABEL[it.kind]}`}
                       className={cn(
                         "shrink-0 text-muted-foreground transition-colors hover:text-primary-glow",
@@ -494,7 +494,7 @@ export default function Agenda() {
                   ) : (
                     it.linkTo && (
                       <button
-                        onClick={() => navigate(it.linkTo!)}
+                        onClick={() => navigate(it.linkTo!, { state: { subTab: it.subTab } })}
                         aria-label={`Ver em ${KIND_LABEL[it.kind]}`}
                         className="opacity-100 transition-opacity hover:text-primary-glow md:opacity-0 md:group-hover:opacity-100"
                       >
