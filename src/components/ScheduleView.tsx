@@ -6,6 +6,7 @@ import { dateKey, todayKey } from "@/store/useAppStore";
 import { timeToMinutes, layoutTimeline } from "@/lib/timeline";
 import { PRIORITY_ACCENT, PRIORITY_BORDER } from "@/lib/priority";
 import { itemTags } from "@/lib/tags";
+import { firstTagStyle } from "@/lib/tagColors";
 import { isoWeekday, WEEKDAY_ABBR } from "@/lib/date";
 import { cn } from "@/lib/utils";
 
@@ -73,13 +74,26 @@ function blockTooltip(title: string, time?: string, tags?: string[]): string {
     .join("\n");
 }
 
-/** Left stripe + outline for a task block. Unprioritized tasks get the app's
- * gold so a plain task still reads as "mine to do" rather than fading into
- * the grid; completed ones drop to neutral. */
+/**
+ * Left stripe + outline for a task block.
+ *
+ * The stripe is the loud cue, so the TAG owns it — that's what makes two
+ * tasks in the same crowded day tell themselves apart. Priority still shows,
+ * but as the outline, so a tagged high-priority task carries both signals
+ * instead of one overwriting the other. Untagged tasks keep the previous
+ * behavior (priority color, then the app's gold) so nothing that already
+ * looked right changes. Completed ones drop to neutral either way.
+ */
 function taskAccent(t: Task): { stripe: string; border: string } {
   if (t.done) return { stripe: "bg-muted-foreground/40", border: "border-border" };
-  if (t.priority) return { stripe: PRIORITY_ACCENT[t.priority], border: PRIORITY_BORDER[t.priority] };
-  return { stripe: "bg-primary", border: "border-primary/40" };
+  const tag = firstTagStyle(itemTags(t));
+  const priority = t.priority
+    ? { stripe: PRIORITY_ACCENT[t.priority], border: PRIORITY_BORDER[t.priority] }
+    : null;
+  return {
+    stripe: tag?.accent ?? priority?.stripe ?? "bg-primary",
+    border: priority?.border ?? tag?.border ?? "border-primary/40",
+  };
 }
 
 /**

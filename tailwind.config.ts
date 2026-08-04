@@ -53,6 +53,19 @@ export default {
         },
         success: "hsl(var(--success))",
         warning: "hsl(var(--warning))",
+        // Tag palette — assigned per tag name by src/lib/tagColors.ts. The
+        // class names must stay statically written out there (bg-tag-1, …);
+        // Tailwind's scanner can't see a template-built `bg-tag-${n}`.
+        tag: {
+          1: "hsl(var(--tag-1))",
+          2: "hsl(var(--tag-2))",
+          3: "hsl(var(--tag-3))",
+          4: "hsl(var(--tag-4))",
+          5: "hsl(var(--tag-5))",
+          6: "hsl(var(--tag-6))",
+          7: "hsl(var(--tag-7))",
+          8: "hsl(var(--tag-8))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
