@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Task, CalEvent } from "@/store/types";
 import { dateKey, todayKey } from "@/store/useAppStore";
 import { timeToMinutes, layoutTimeline } from "@/lib/timeline";
-import { PRIORITY_ACCENT, PRIORITY_BORDER } from "@/lib/priority";
+import { PRIORITY_ACCENT, PRIORITY_BORDER, PRIORITY_TINT } from "@/lib/priority";
 import { itemTags } from "@/lib/tags";
 import { firstTagStyle } from "@/lib/tagColors";
 import { isoWeekday, WEEKDAY_ABBR } from "@/lib/date";
@@ -75,24 +75,34 @@ function blockTooltip(title: string, time?: string, tags?: string[]): string {
 }
 
 /**
- * Left stripe + outline for a task block.
+ * How a task block is colored: a stripe down its left edge, a wash over its
+ * whole face, and the outline.
  *
- * The stripe is the loud cue, so the TAG owns it — that's what makes two
- * tasks in the same crowded day tell themselves apart. Priority still shows,
- * but as the outline, so a tagged high-priority task carries both signals
- * instead of one overwriting the other. Untagged tasks keep the previous
- * behavior (priority color, then the app's gold) so nothing that already
- * looked right changes. Completed ones drop to neutral either way.
+ * The TAG owns the color, since telling two tasks apart in a crowded day is
+ * exactly what tags are for. Priority still shows through the outline, so a
+ * tagged high-priority task carries both signals instead of one overwriting
+ * the other; a task with a priority and no tag is colored by the priority
+ * instead.
+ *
+ * An untagged, unprioritized task is deliberately NEUTRAL rather than gold:
+ * gold is the app's accent and also the first tag hue, so painting every
+ * plain task with it made the whole grid read as one gold mass and buried
+ * the tagged ones. Grey lets the colored blocks be the thing that stands out.
  */
-function taskAccent(t: Task): { stripe: string; border: string } {
-  if (t.done) return { stripe: "bg-muted-foreground/40", border: "border-border" };
+function taskAccent(t: Task): { stripe: string; border: string; tint: string } {
+  if (t.done) return { stripe: "bg-muted-foreground/40", border: "border-border", tint: "" };
   const tag = firstTagStyle(itemTags(t));
   const priority = t.priority
-    ? { stripe: PRIORITY_ACCENT[t.priority], border: PRIORITY_BORDER[t.priority] }
+    ? {
+        stripe: PRIORITY_ACCENT[t.priority],
+        border: PRIORITY_BORDER[t.priority],
+        tint: PRIORITY_TINT[t.priority],
+      }
     : null;
   return {
-    stripe: tag?.accent ?? priority?.stripe ?? "bg-primary",
-    border: priority?.border ?? tag?.border ?? "border-primary/40",
+    stripe: tag?.accent ?? priority?.stripe ?? "bg-muted-foreground/60",
+    border: priority?.border ?? tag?.border ?? "border-border",
+    tint: tag?.tint ?? priority?.tint ?? "",
   };
 }
 
@@ -361,9 +371,12 @@ export function ScheduleView({
                         const isTask = b.kind === "task";
                         const source = isTask ? b.task : b.event;
                         const isDone = isTask && b.task.done;
-                        const { stripe, border } = isTask
+                        // Events keep the stripe-only treatment: their color
+                        // is a free-form bg-* class the user picked, so there
+                        // is no matching translucent variant to wash with.
+                        const { stripe, border, tint } = isTask
                           ? taskAccent(b.task)
-                          : { stripe: b.event.color, border: "border-border" };
+                          : { stripe: b.event.color, border: "border-border", tint: "" };
 
                         // Opaque `bg-card` on purpose: the old translucent fill
                         // let the day-lane tint bleed through, which made two
@@ -379,8 +392,11 @@ export function ScheduleView({
 
                         const content = (
                           <>
-                            <span className={cn("w-[3px] shrink-0", stripe)} aria-hidden="true" />
-                            <span className="min-w-0 flex-1 px-1.5 py-1">
+                            {tint && (
+                              <span className={cn("absolute inset-0", tint)} aria-hidden="true" />
+                            )}
+                            <span className={cn("relative w-1 shrink-0", stripe)} aria-hidden="true" />
+                            <span className="relative min-w-0 flex-1 px-1.5 py-1">
                               {compact ? (
                                 <span
                                   className={cn(

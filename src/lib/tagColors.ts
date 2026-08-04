@@ -14,6 +14,15 @@ export interface TagStyle {
   accent: string;
   /** Matching outline for a block carrying that accent. */
   border: string;
+  /**
+   * Wash laid over the block's whole face. The stripe alone covered ~2% of a
+   * block's area, which simply did not read as "this task is blue" at a
+   * glance (least of all on a phone) — the tint is what actually makes the
+   * color visible. Applied as an overlay on top of an opaque background, not
+   * as the background itself, so the day-lane shading behind can't bleed
+   * through and merge neighbouring blocks together.
+   */
+  tint: string;
 }
 
 /**
@@ -22,14 +31,14 @@ export interface TagStyle {
  * and every block would come out unstyled.
  */
 const TAG_STYLES: TagStyle[] = [
-  { accent: "bg-tag-1", border: "border-tag-1/60" },
-  { accent: "bg-tag-2", border: "border-tag-2/60" },
-  { accent: "bg-tag-3", border: "border-tag-3/60" },
-  { accent: "bg-tag-4", border: "border-tag-4/60" },
-  { accent: "bg-tag-5", border: "border-tag-5/60" },
-  { accent: "bg-tag-6", border: "border-tag-6/60" },
-  { accent: "bg-tag-7", border: "border-tag-7/60" },
-  { accent: "bg-tag-8", border: "border-tag-8/60" },
+  { accent: "bg-tag-1", border: "border-tag-1/60", tint: "bg-tag-1/20" },
+  { accent: "bg-tag-2", border: "border-tag-2/60", tint: "bg-tag-2/20" },
+  { accent: "bg-tag-3", border: "border-tag-3/60", tint: "bg-tag-3/20" },
+  { accent: "bg-tag-4", border: "border-tag-4/60", tint: "bg-tag-4/20" },
+  { accent: "bg-tag-5", border: "border-tag-5/60", tint: "bg-tag-5/20" },
+  { accent: "bg-tag-6", border: "border-tag-6/60", tint: "bg-tag-6/20" },
+  { accent: "bg-tag-7", border: "border-tag-7/60", tint: "bg-tag-7/20" },
+  { accent: "bg-tag-8", border: "border-tag-8/60", tint: "bg-tag-8/20" },
 ];
 
 /**
