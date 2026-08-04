@@ -7,6 +7,7 @@ import {
   User,
   Briefcase,
   Network,
+  StickyNote,
   Plus,
   MoreHorizontal,
 } from "lucide-react";
@@ -37,6 +38,7 @@ const moreTabs = [
   { to: "/pessoal", label: "Pessoal", icon: User },
   { to: "/profissional", label: "Profissional", icon: Briefcase },
   { to: "/mapas", label: "Mapa Mental", icon: Network },
+  { to: "/notas", label: "Notas", icon: StickyNote },
 ];
 
 const tabCls = (isActive: boolean) =>

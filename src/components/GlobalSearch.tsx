@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { CheckCircle2, Repeat, Target, FolderKanban, CalendarDays, Search } from "lucide-react";
+import { CheckCircle2, Repeat, Target, FolderKanban, CalendarDays, StickyNote, Search } from "lucide-react";
 import {
   CommandDialog,
   CommandEmpty,
@@ -24,7 +24,7 @@ import { resolveDomain } from "@/lib/domain";
 export function GlobalSearch() {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
-  const { tasks, habits, goals, projects, events } = useUserData();
+  const { tasks, habits, goals, projects, events, notes } = useUserData();
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -101,6 +101,20 @@ export function GlobalSearch() {
                 <CommandItem key={e.id} value={`evento ${e.title}`} onSelect={() => go("/calendario")}>
                   <CalendarDays className="mr-2 h-4 w-4 text-muted-foreground" />
                   {e.title}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          )}
+          {notes.length > 0 && (
+            <CommandGroup heading="Notas">
+              {notes.map((n) => (
+                <CommandItem
+                  key={n.id}
+                  value={`nota ${n.title || "sem título"}`}
+                  onSelect={() => go(`/notas/${n.id}`)}
+                >
+                  <StickyNote className="mr-2 h-4 w-4 text-muted-foreground" />
+                  {n.title.trim() || "Sem título"}
                 </CommandItem>
               ))}
             </CommandGroup>

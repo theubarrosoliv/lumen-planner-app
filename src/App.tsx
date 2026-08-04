@@ -16,6 +16,8 @@ import Pessoal from "./pages/Pessoal";
 import Profissional from "./pages/Profissional";
 import MindMaps from "./pages/MindMaps";
 import MindMapPage from "./pages/MindMap";
+import Notes from "./pages/Notes";
+import NotePage from "./pages/Note";
 import Notifications from "./pages/Notifications";
 import Settings from "./pages/Settings";
 import Profile from "./pages/Profile";
@@ -63,6 +65,8 @@ const App = () => (
                 <Route path="/profissional" element={<Profissional />} />
                 <Route path="/mapas" element={<MindMaps />} />
                 <Route path="/mapas/:id" element={<MindMapPage />} />
+                <Route path="/notas" element={<Notes />} />
+                <Route path="/notas/:id" element={<NotePage />} />
                 <Route path="/notificacoes" element={<Notifications />} />
                 <Route path="/configuracoes" element={<Settings />} />
                 <Route path="/perfil" element={<Profile />} />

@@ -7,6 +7,7 @@ import {
   Briefcase,
   Repeat,
   Network,
+  StickyNote,
 } from "lucide-react";
 import { LumenMark } from "@/components/LumenMark";
 import {
@@ -33,6 +34,7 @@ const focus = [
   { title: "Pessoal", url: "/pessoal", icon: User },
   { title: "Profissional", url: "/profissional", icon: Briefcase },
   { title: "Mapa Mental", url: "/mapas", icon: Network },
+  { title: "Notas", url: "/notas", icon: StickyNote },
 ];
 
 export function AppSidebar() {
