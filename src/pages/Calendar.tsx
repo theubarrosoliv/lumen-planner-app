@@ -30,7 +30,7 @@ import { useCustomOptions } from "@/hooks/use-custom-options";
 import { useAppStore, useUserData, dateKey, todayKey } from "@/store/useAppStore";
 import { CalEvent, NotifyLeadUnit, Task } from "@/store/types";
 import { itemTags } from "@/lib/tags";
-import { timeToMinutes } from "@/lib/timeline";
+import { durationBetween, endTimeOf, timeToMinutes } from "@/lib/timeline";
 import { splitWeekdayTask } from "@/lib/tasks";
 import { PRIORITY_BLOCK_STYLE } from "@/lib/priority";
 import { formatLongDate } from "@/lib/date";
@@ -86,7 +86,9 @@ export function EventDialog({
   const [color, setColor] = useState(initial?.color ?? "bg-primary");
   const [date, setDate] = useState(initial?.date ?? defaultDate ?? todayKey());
   const [time, setTime] = useState(initial?.time ?? "");
-  const [duration, setDuration] = useState<number | undefined>(initial?.duration);
+  // Stored as a `duration` in minutes, but entered as an end time — see the
+  // same conversion in TaskDialog.
+  const [endTime, setEndTime] = useState(endTimeOf(initial?.time, initial?.duration) ?? "");
   const [tags, setTags] = useState<string[]>(initial ? itemTags(initial) : []);
   const [notify, setNotify] = useState(initial?.notify !== false);
   const [notifyLeadValue, setNotifyLeadValue] = useState<number | undefined>(initial?.notifyLeadValue);
@@ -101,13 +103,17 @@ export function EventDialog({
 
   const submit = () => {
     if (!title.trim()) return toast.error("Defina o título do evento.");
+    if (endTime && !time) return toast.error("Defina a hora de início antes da de término.");
+    if (endTime && durationBetween(time, endTime) === null) {
+      return toast.error("O término precisa ser depois do início.");
+    }
     onSave({
       title: title.trim(),
       date,
       time: time || undefined,
       color,
       tags,
-      duration,
+      duration: endTime ? (durationBetween(time, endTime) ?? undefined) : undefined,
       notify,
       notifyLeadValue,
       notifyLeadUnit,
@@ -117,7 +123,7 @@ export function EventDialog({
       setTitle("");
       setTime("");
       setTags([]);
-      setDuration(undefined);
+      setEndTime("");
     }
   };
 
@@ -133,32 +139,36 @@ export function EventDialog({
             <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Título</Label>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} autoFocus />
           </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Data</Label>
+            <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Data</Label>
-              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+              <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                Começa às <span className="normal-case tracking-normal">(opc.)</span>
+              </Label>
+              <Input
+                type="time"
+                value={time}
+                onChange={(e) => {
+                  setTime(e.target.value);
+                  // An end time left behind in a disabled field would block saving.
+                  if (!e.target.value) setEndTime("");
+                }}
+              />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                Horário <span className="normal-case tracking-normal">(opc.)</span>
+                Termina às <span className="normal-case tracking-normal">(opc.)</span>
               </Label>
-              <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+              <Input
+                type="time"
+                value={endTime}
+                disabled={!time}
+                onChange={(e) => setEndTime(e.target.value)}
+              />
             </div>
-          </div>
-          <div className="max-w-[10rem] space-y-1.5">
-            <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-              Duração (min)
-            </Label>
-            <Input
-              type="number"
-              inputMode="numeric"
-              pattern="[0-9]*"
-              min={0}
-              step={5}
-              placeholder="60"
-              value={duration ?? ""}
-              onChange={(e) => setDuration(e.target.value === "" ? undefined : Number(e.target.value))}
-            />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Cor</Label>

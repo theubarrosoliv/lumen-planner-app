@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Task, CalEvent } from "@/store/types";
 import { dateKey, todayKey } from "@/store/useAppStore";
-import { timeToMinutes, layoutTimeline } from "@/lib/timeline";
+import { timeToMinutes, layoutTimeline, minutesToTime } from "@/lib/timeline";
 import { PRIORITY_ACCENT, PRIORITY_BORDER, PRIORITY_TINT } from "@/lib/priority";
 import { itemTags } from "@/lib/tags";
 import { firstTagStyle } from "@/lib/tagColors";
@@ -68,10 +68,21 @@ function laneTint(index: number, isToday: boolean): string {
 const hasTime = (time?: string) => !!time && time !== "—";
 
 /** Hover/long-press text: everything that doesn't fit inside a small block. */
-function blockTooltip(title: string, time?: string, tags?: string[]): string {
-  return [hasTime(time) ? `${time} · ${title}` : title, tags?.length ? tags.join(", ") : null]
+function blockTooltip(title: string, when?: string | null, tags?: string[]): string {
+  return [when ? `${when} · ${title}` : title, tags?.length ? tags.join(", ") : null]
     .filter(Boolean)
     .join("\n");
+}
+
+/**
+ * "15:00 – 16:30" when the item has an explicit end, just "15:00" when it
+ * doesn't. Deliberately NOT derived from the block's laid-out height: that
+ * height falls back to a default length for items with no duration, so
+ * reading the end off it would state an end time the user never set.
+ */
+function timeRange(time: string | undefined, duration: number | undefined, endMinutes: number): string | null {
+  if (!hasTime(time)) return null;
+  return duration ? `${time} – ${minutesToTime(endMinutes)}` : time!;
 }
 
 /**
@@ -274,7 +285,7 @@ export function ScheduleView({
                         : "border-border bg-card font-medium",
                       render && "transition-colors hover:border-primary/60",
                     );
-                    const pillTitle = blockTooltip(source.title, source.time, itemTags(source));
+                    const pillTitle = blockTooltip(source.title, null, itemTags(source));
                     const pillContent = (
                       <>
                         <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", stripe)} />
@@ -388,7 +399,8 @@ export function ScheduleView({
                           (isTask ? renderTaskTrigger : renderEventTrigger) &&
                             "transition-shadow hover:shadow-glow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
                         );
-                        const tooltip = blockTooltip(source.title, source.time, itemTags(source));
+                        const range = timeRange(source.time, source.duration, b.end);
+                        const tooltip = blockTooltip(source.title, range, itemTags(source));
 
                         const content = (
                           <>
@@ -404,6 +416,7 @@ export function ScheduleView({
                                     isDone && "text-muted-foreground line-through",
                                   )}
                                 >
+                                  {/* Only the start fits on one line at this size. */}
                                   {hasTime(source.time) && (
                                     <span className="text-mono mr-1 text-muted-foreground">{source.time}</span>
                                   )}
@@ -419,9 +432,9 @@ export function ScheduleView({
                                   >
                                     {source.title}
                                   </span>
-                                  {hasTime(source.time) && (
+                                  {range && (
                                     <span className="text-mono block truncate text-[10px] text-muted-foreground">
-                                      {source.time}
+                                      {range}
                                     </span>
                                   )}
                                 </>

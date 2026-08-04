@@ -18,6 +18,7 @@ import { useCustomOptions } from "@/hooks/use-custom-options";
 import { todayKey } from "@/store/useAppStore";
 import { Task, NotifyLeadUnit, TaskPriority, TaskRecurrence } from "@/store/types";
 import { itemTags } from "@/lib/tags";
+import { durationBetween, endTimeOf } from "@/lib/timeline";
 import { toast } from "sonner";
 
 const TAGS = ["Foco", "Trabalho", "Reunião", "Hábito", "Saúde", "Pessoal"];
@@ -62,7 +63,9 @@ export function TaskDialog({
   const [recurrence, setRecurrence] = useState<TaskRecurrence | "none">(initial?.recurrence ?? "none");
   const [weekdays, setWeekdays] = useState<number[]>(initial?.weekdays ?? []);
   const [intervalDays, setIntervalDays] = useState<number | undefined>(initial?.intervalDays ?? 15);
-  const [duration, setDuration] = useState<number | undefined>(initial?.duration);
+  // The store keeps a `duration` in minutes, but people think in "15:00 to
+  // 16:30", so the form works in end times and converts on the way in and out.
+  const [endTime, setEndTime] = useState(endTimeOf(initial?.time, initial?.duration) ?? "");
   const [notify, setNotify] = useState(initial?.notify !== false);
   const [notifyLeadValue, setNotifyLeadValue] = useState<number | undefined>(initial?.notifyLeadValue);
   const [notifyLeadUnit, setNotifyLeadUnit] = useState<NotifyLeadUnit>(initial?.notifyLeadUnit ?? "minutes");
@@ -87,6 +90,14 @@ export function TaskDialog({
       toast.error("Informe a cada quantos dias (mínimo 2).");
       return;
     }
+    if (endTime && !time) {
+      toast.error("Defina a hora de início antes da de término.");
+      return;
+    }
+    if (endTime && durationBetween(time, endTime) === null) {
+      toast.error("O término precisa ser depois do início.");
+      return;
+    }
     onSave({
       title: text.trim(),
       time: time || "—",
@@ -96,7 +107,7 @@ export function TaskDialog({
       recurrence: recurrence === "none" ? undefined : recurrence,
       weekdays: recurrence === "weekdays" ? weekdays : undefined,
       intervalDays: recurrence === "every_n_days" ? intervalDays : undefined,
-      duration,
+      duration: endTime ? (durationBetween(time, endTime) ?? undefined) : undefined,
       notify,
       notifyLeadValue,
       notifyLeadUnit,
@@ -110,7 +121,7 @@ export function TaskDialog({
       setRecurrence("none");
       setWeekdays([]);
       setIntervalDays(15);
-      setDuration(undefined);
+      setEndTime("");
     }
   };
 
@@ -132,27 +143,6 @@ export function TaskDialog({
               <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Hora</Label>
-              <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                Duração (min)
-              </Label>
-              <Input
-                type="number"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                min={0}
-                step={5}
-                placeholder="60"
-                value={duration ?? ""}
-                onChange={(e) => setDuration(e.target.value === "" ? undefined : Number(e.target.value))}
-              />
-            </div>
-            <div className="space-y-1.5">
               <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
                 Prioridade
               </Label>
@@ -171,6 +161,41 @@ export function TaskDialog({
                 </SelectContent>
               </Select>
             </div>
+          </div>
+          <div className="space-y-1.5">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                  Começa às
+                </Label>
+                <Input
+                  type="time"
+                  value={time}
+                  onChange={(e) => {
+                    setTime(e.target.value);
+                    // Clearing the start would leave an end time stranded in a
+                    // disabled field that then blocks saving.
+                    if (!e.target.value) setEndTime("");
+                  }}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                  Termina às <span className="normal-case tracking-normal">(opc.)</span>
+                </Label>
+                <Input
+                  type="time"
+                  value={endTime}
+                  disabled={!time}
+                  onChange={(e) => setEndTime(e.target.value)}
+                />
+              </div>
+            </div>
+            {!time && (
+              <p className="text-[11px] text-muted-foreground">
+                Defina a hora de início para poder marcar o término.
+              </p>
+            )}
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">

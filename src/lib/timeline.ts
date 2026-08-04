@@ -6,6 +6,37 @@ export function timeToMinutes(time?: string): number | null {
   return Number(m[1]) * 60 + Number(m[2]);
 }
 
+/** Formats minutes-since-midnight back into "HH:MM". */
+export function minutesToTime(total: number): string {
+  const h = Math.floor(total / 60) % 24;
+  const m = Math.round(total % 60);
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+/**
+ * When an item that starts at `start` and lasts `duration` minutes ends.
+ * Null when there's no real start time or no duration — items are stored as
+ * start + length, so "ends at" only exists once both are known.
+ */
+export function endTimeOf(start: string | undefined, duration: number | undefined): string | null {
+  const s = timeToMinutes(start);
+  if (s === null || !duration || duration <= 0) return null;
+  return minutesToTime(s + duration);
+}
+
+/**
+ * Minutes from `start` to `end` — the inverse of endTimeOf, used to turn the
+ * end time the user picks back into the `duration` that's actually stored.
+ * Null when either isn't a time or `end` isn't strictly after `start`, which
+ * is how callers detect an invalid range.
+ */
+export function durationBetween(start: string | undefined, end: string | undefined): number | null {
+  const s = timeToMinutes(start);
+  const e = timeToMinutes(end);
+  if (s === null || e === null || e <= s) return null;
+  return e - s;
+}
+
 export interface TimedBlock {
   id: string;
   start: number; // minutes since midnight
