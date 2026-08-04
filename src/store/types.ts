@@ -194,6 +194,22 @@ export interface MindMap {
   viewport?: { x: number; y: number; zoom: number };
 }
 
+export interface NoteFolder {
+  id: string;
+  name: string;
+  createdAt: string;
+}
+
+export interface Note {
+  id: string;
+  /** Absent = ungrouped, shown under "Sem pasta". */
+  folderId?: string;
+  title: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface NotificationCategoryPrefs {
   taskReminder: boolean;
   dailyAgenda: boolean;
@@ -250,6 +266,8 @@ export interface UserData {
   projects: Project[];
   events: CalEvent[];
   mindmaps: MindMap[];
+  notes: Note[];
+  noteFolders: NoteFolder[];
   notificationPrefs: NotificationPrefs;
 }
 
@@ -260,5 +278,7 @@ export const emptyUserData = (): UserData => ({
   projects: [],
   events: [],
   mindmaps: [],
+  notes: [],
+  noteFolders: [],
   notificationPrefs: defaultNotificationPrefs(),
 });

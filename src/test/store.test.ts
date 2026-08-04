@@ -23,6 +23,8 @@ function loginTestUser() {
         projects: [],
         events: [],
         mindmaps: [],
+        notes: [],
+        noteFolders: [],
         notificationPrefs: defaultNotificationPrefs(),
       },
     },

@@ -9,6 +9,7 @@ import { GoalsSlice, createGoalsSlice } from "./slices/goalsSlice";
 import { ProjectsSlice, createProjectsSlice } from "./slices/projectsSlice";
 import { EventsSlice, createEventsSlice } from "./slices/eventsSlice";
 import { MindmapsSlice, createMindmapsSlice } from "./slices/mindmapsSlice";
+import { NotesSlice, createNotesSlice } from "./slices/notesSlice";
 import { NotificationsSlice, createNotificationsSlice } from "./slices/notificationsSlice";
 
 type State = CoreState &
@@ -19,6 +20,7 @@ type State = CoreState &
   ProjectsSlice &
   EventsSlice &
   MindmapsSlice &
+  NotesSlice &
   NotificationsSlice;
 
 export const useAppStore = create<State>()((set, get, api) => {
@@ -51,6 +53,7 @@ export const useAppStore = create<State>()((set, get, api) => {
     ...createProjectsSlice(persist)(set, get, api),
     ...createEventsSlice(persist)(set, get, api),
     ...createMindmapsSlice(persist, persistAll)(set, get, api),
+    ...createNotesSlice(persist, persistAll)(set, get, api),
     ...createNotificationsSlice(persist)(set, get, api),
   };
 });
@@ -92,6 +95,8 @@ const EMPTY_USER_DATA: UserData = {
   projects: [],
   events: [],
   mindmaps: [],
+  notes: [],
+  noteFolders: [],
   notificationPrefs: defaultNotificationPrefs(),
 };
 
