@@ -78,6 +78,15 @@ export interface Task extends NotifyOverride {
  */
 export type HabitFrequency = "daily" | "weekly" | "monthly" | "weekdays" | "every_n_days" | "times_per_week";
 
+/**
+ * Loose "when in the day" bucket for grouping habits — deliberately NOT a
+ * clock time. "De manhã" is how people actually plan a routine; pinning it to
+ * e.g. 06:00–12:00 would force a decision nobody wants to make and would make
+ * a habit jump groups just because the boundary was off by an hour. It only
+ * ever affects presentation: nothing schedules, reminds or resets from it.
+ */
+export type DayPeriod = "manha" | "tarde" | "noite";
+
 export interface Habit extends NotifyOverride {
   id: string;
   name: string;
@@ -96,6 +105,10 @@ export interface Habit extends NotifyOverride {
   anchorDate?: string;
   /** Required when `frequency` is "times_per_week": check-ins needed within the ISO week to count it as done. */
   timesPerWeek?: number;
+  /** Optional day bucket used only to group the habit list (see DayPeriod).
+   * Absent = ungrouped; habits saved before this existed simply land in
+   * "Sem período". */
+  dayPeriod?: DayPeriod;
   /**
    * Keyed by period:
    *  - daily / weekdays / times_per_week: YYYY-MM-DD (one entry per day)

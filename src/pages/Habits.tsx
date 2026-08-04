@@ -1,11 +1,24 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SectionHeader } from "@/components/SectionHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Flame, Plus, Trash2, Pencil, Check, CalendarDays, Repeat, BarChart3 } from "lucide-react";
+import {
+  Flame,
+  Plus,
+  Trash2,
+  Pencil,
+  Check,
+  CalendarDays,
+  Repeat,
+  BarChart3,
+  Sunrise,
+  Sun,
+  Moon,
+  LayoutList,
+} from "lucide-react";
 import { useAppStore, useUserData } from "@/store/useAppStore";
-import { Habit, HabitFrequency, NotifyLeadUnit } from "@/store/types";
+import { DayPeriod, Habit, HabitFrequency, NotifyLeadUnit } from "@/store/types";
 import {
   Dialog,
   DialogContent,
@@ -33,6 +46,25 @@ import { NotifyField } from "@/components/NotifyField";
 import { WeekdaySelector } from "@/components/WeekdaySelector";
 import { useConfirmDelete } from "@/hooks/use-confirm-delete";
 
+const DAY_PERIOD_LABEL: Record<DayPeriod, string> = {
+  manha: "Manhã",
+  tarde: "Tarde",
+  noite: "Noite",
+};
+
+const DAY_PERIOD_ICON: Record<DayPeriod, React.ElementType> = {
+  manha: Sunrise,
+  tarde: Sun,
+  noite: Moon,
+};
+
+const DAY_PERIOD_ORDER: DayPeriod[] = ["manha", "tarde", "noite"];
+
+/** Remembers the grouping choice across visits — it's a way of reading the
+ * page, not something to re-pick every time. Kept in localStorage rather than
+ * in the synced user data: it's a per-device view preference. */
+const GROUP_PREF_KEY = "lumen-habits-group-by-period";
+
 function HabitDialog({
   trigger,
   title,
@@ -48,6 +80,7 @@ function HabitDialog({
     weekdays?: number[];
     intervalDays?: number;
     timesPerWeek?: number;
+    dayPeriod?: DayPeriod;
     notify?: boolean;
     notifyLeadValue?: number;
     notifyLeadUnit?: NotifyLeadUnit;
@@ -55,6 +88,7 @@ function HabitDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(initial?.name ?? "");
+  const [dayPeriod, setDayPeriod] = useState<DayPeriod | "none">(initial?.dayPeriod ?? "none");
   const [frequency, setFrequency] = useState<HabitFrequency>(
     (initial?.frequency as HabitFrequency) ?? "daily",
   );
@@ -82,6 +116,7 @@ function HabitDialog({
       weekdays: frequency === "weekdays" ? weekdays : undefined,
       intervalDays: frequency === "every_n_days" ? intervalDays : undefined,
       timesPerWeek: frequency === "times_per_week" ? timesPerWeek : undefined,
+      dayPeriod: dayPeriod === "none" ? undefined : dayPeriod,
       notify,
       notifyLeadValue,
       notifyLeadUnit,
@@ -93,6 +128,7 @@ function HabitDialog({
       setWeekdays([]);
       setIntervalDays(15);
       setTimesPerWeek(3);
+      setDayPeriod("none");
     }
   };
 
@@ -165,6 +201,27 @@ function HabitDialog({
               preservados.
             </p>
           </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+              Período do dia <span className="normal-case tracking-normal">(opc.)</span>
+            </Label>
+            <Select value={dayPeriod} onValueChange={(v) => setDayPeriod(v as DayPeriod | "none")}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sem período</SelectItem>
+                {DAY_PERIOD_ORDER.map((p) => (
+                  <SelectItem key={p} value={p}>
+                    {DAY_PERIOD_LABEL[p]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-[11px] text-muted-foreground">
+              Serve só para organizar a lista — não define horário nem muda os lembretes.
+            </p>
+          </div>
           <NotifyField
             notify={notify}
             onNotifyChange={setNotify}
@@ -187,13 +244,188 @@ function HabitDialog({
   );
 }
 
+/** One habit's card. Extracted so the grouped and flat layouts render the
+ * exact same card instead of keeping two copies of it in sync. */
+function HabitCard({ habit: h, index, onDelete }: { habit: Habit; index: number; onDelete: () => void }) {
+  const updateHabit = useAppStore((s) => s.updateHabit);
+  const toggleHabitPeriod = useAppStore((s) => s.toggleHabitPeriod);
+
+  const freq = h.frequency ?? "daily";
+  const periodCount =
+    freq === "daily" || freq === "weekdays"
+      ? 21
+      : freq === "every_n_days"
+        ? 10
+        : freq === "times_per_week"
+          ? 14
+          : 12;
+  const periods = lastNPeriods(h, periodCount);
+  const activeMask = activeStreakPeriods(h, periods);
+  const completed = periods.filter((p) => h.completions[p]).length;
+  const pct = Math.round((completed / periods.length) * 100);
+  const streak = streakOf(h);
+  const total = totalCompletions(h);
+  const currentKey = currentPeriodKey(h);
+  const doneNow = !!h.completions[currentKey];
+  const dueToday = isDueOn(h, new Date());
+  const week = freq === "times_per_week" ? weekProgress(h) : null;
+  const PeriodIcon = h.dayPeriod ? DAY_PERIOD_ICON[h.dayPeriod] : null;
+
+  return (
+    <div
+      className="group relative overflow-hidden rounded-2xl border border-border bg-gradient-card p-6 transition-all hover:border-primary/40 animate-rise"
+      style={{ animationDelay: `${index * 60}ms` }}
+    >
+      {/* identity strip */}
+      <div className="absolute left-0 top-0 h-full w-[3px] bg-gradient-to-b from-primary via-primary-glow to-transparent opacity-60" />
+
+      <div className="mb-4 flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => dueToday && toggleHabitPeriod(h.id, currentKey)}
+              disabled={!dueToday}
+              aria-pressed={doneNow}
+              aria-label={
+                !dueToday
+                  ? "Não programado para hoje"
+                  : doneNow
+                    ? "Desmarcar hábito neste período"
+                    : "Marcar hábito como feito"
+              }
+              title={!dueToday ? "Não programado para hoje" : undefined}
+              className={cn(
+                "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition-colors",
+                !dueToday
+                  ? "cursor-not-allowed border-border bg-secondary/20 opacity-40"
+                  : doneNow
+                    ? "border-primary bg-gradient-primary"
+                    : "border-border bg-secondary/40 hover:border-primary/40",
+              )}
+            >
+              {doneNow && <Check className="h-3.5 w-3.5 text-primary-foreground" />}
+            </button>
+            <h3 className="font-display text-xl leading-tight">{h.name}</h3>
+            <span className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary/50 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+              <Repeat className="h-2.5 w-2.5" />
+              {describeFrequency(h)}
+            </span>
+            {/* Also shown when grouping is off — otherwise the period a habit
+                belongs to would be invisible outside the grouped view. */}
+            {h.dayPeriod && PeriodIcon && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-primary-glow">
+                <PeriodIcon className="h-2.5 w-2.5" />
+                {DAY_PERIOD_LABEL[h.dayPeriod]}
+              </span>
+            )}
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {completed}/{periods.length} {FREQUENCY_UNIT[freq]} · {pct}%
+            {week && ` · ${week.count}/${week.target} esta semana`}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 rounded-full border border-warning/40 bg-warning/10 px-3 py-1">
+            <Flame className="h-3.5 w-3.5 text-warning" />
+            <span className="text-mono text-xs text-warning">{streak}</span>
+          </div>
+          <HabitDialog
+            title="Editar hábito"
+            initial={h}
+            onSave={(v) => updateHabit(h.id, v)}
+            trigger={
+              <button className="opacity-100 transition-opacity hover:text-primary-glow md:opacity-0 md:group-hover:opacity-100">
+                <Pencil className="h-4 w-4" />
+              </button>
+            }
+          />
+          <button
+            onClick={onDelete}
+            className="opacity-100 transition-opacity hover:text-destructive md:opacity-0 md:group-hover:opacity-100"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* history grid — visual only */}
+      <div
+        className="mb-4 grid gap-1"
+        style={{ gridTemplateColumns: `repeat(${periods.length}, 1fr)` }}
+        aria-label="Histórico de períodos"
+      >
+        {periods.map((p, pi) => {
+          const active = activeMask[pi];
+          const isCurrent = p === currentKey;
+          return (
+            <div
+              key={p}
+              title={p}
+              className={cn(
+                "h-7 rounded-sm",
+                active ? "bg-gradient-to-t from-primary to-primary-glow shadow-soft" : "bg-secondary/60",
+                isCurrent && "ring-1 ring-primary-glow ring-offset-1 ring-offset-card",
+              )}
+            />
+          );
+        })}
+      </div>
+
+      <div className="mt-3 flex items-center justify-between text-[10px] uppercase tracking-[0.2em] text-muted-foreground/80">
+        <span className="flex items-center gap-1">
+          <CalendarDays className="h-3 w-3" /> {currentKey}
+        </span>
+        <span className="flex items-center gap-2">
+          <span className="flex items-center gap-1">
+            <BarChart3 className="h-3 w-3" /> {total}
+          </span>
+          <span>streak · {streak} {FREQUENCY_UNIT[freq]}</span>
+        </span>
+      </div>
+    </div>
+  );
+}
+
 export default function Habits() {
   const { habits } = useUserData();
   const addHabit = useAppStore((s) => s.addHabit);
-  const updateHabit = useAppStore((s) => s.updateHabit);
   const removeHabit = useAppStore((s) => s.removeHabit);
-  const toggleHabitPeriod = useAppStore((s) => s.toggleHabitPeriod);
   const { requestDelete, dialog } = useConfirmDelete();
+
+  const [groupByPeriod, setGroupByPeriod] = useState(() => {
+    try {
+      return localStorage.getItem(GROUP_PREF_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(GROUP_PREF_KEY, groupByPeriod ? "1" : "0");
+    } catch {
+      /* storage unavailable (private mode) — the choice just won't persist */
+    }
+  }, [groupByPeriod]);
+
+  /** Habits bucketed by day period, in Manhã → Tarde → Noite order with the
+   * unassigned ones last. Empty buckets are dropped so the page never shows a
+   * heading with nothing under it. */
+  const groups = useMemo(() => {
+    const buckets = new Map<DayPeriod | "none", Habit[]>();
+    for (const h of habits) {
+      const key = h.dayPeriod ?? "none";
+      buckets.set(key, [...(buckets.get(key) ?? []), h]);
+    }
+    return [...DAY_PERIOD_ORDER, "none" as const]
+      .map((key) => ({ key, items: buckets.get(key) ?? [] }))
+      .filter((g) => g.items.length > 0);
+  }, [habits]);
+
+  const askDelete = (h: Habit) =>
+    requestDelete(() => removeHabit(h.id), {
+      title: "Excluir hábito?",
+      description: `"${h.name}" e todo o histórico de streak serão perdidos.`,
+    });
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -214,6 +446,7 @@ export default function Habits() {
                 v.weekdays,
                 v.intervalDays,
                 v.timesPerWeek,
+                v.dayPeriod,
               )
             }
             trigger={
@@ -225,12 +458,6 @@ export default function Habits() {
         }
       />
 
-      {habits.length > 0 && (
-        <div className="mb-6">
-          <HabitsCharts />
-        </div>
-      )}
-
       {habits.length === 0 ? (
         <div className="rounded-2xl border border-border bg-gradient-card py-16 text-center">
           <p className="font-display text-2xl text-muted-foreground">Sem hábitos ainda.</p>
@@ -239,143 +466,55 @@ export default function Habits() {
           </p>
         </div>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {habits.map((h, i) => {
-            const freq = h.frequency ?? "daily";
-            const periodCount =
-              freq === "daily" || freq === "weekdays"
-                ? 21
-                : freq === "every_n_days"
-                  ? 10
-                  : freq === "times_per_week"
-                    ? 14
-                    : 12;
-            const periods = lastNPeriods(h, periodCount);
-            const activeMask = activeStreakPeriods(h, periods);
-            const completed = periods.filter((p) => h.completions[p]).length;
-            const pct = Math.round((completed / periods.length) * 100);
-            const streak = streakOf(h);
-            const total = totalCompletions(h);
-            const currentKey = currentPeriodKey(h);
-            const doneNow = !!h.completions[currentKey];
-            const dueToday = isDueOn(h, new Date());
-            const week = freq === "times_per_week" ? weekProgress(h) : null;
+        <>
+          <div className="mb-4 flex justify-end">
+            <button
+              onClick={() => setGroupByPeriod((v) => !v)}
+              aria-pressed={groupByPeriod}
+              className={cn(
+                "flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs uppercase tracking-[0.2em] transition-all",
+                groupByPeriod
+                  ? "border-transparent bg-gradient-primary text-primary-foreground shadow-soft"
+                  : "border-border bg-secondary/40 text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <LayoutList className="h-3 w-3" />
+              Por período
+            </button>
+          </div>
 
-            return (
-              <div
-                key={h.id}
-                className="group relative overflow-hidden rounded-2xl border border-border bg-gradient-card p-6 transition-all hover:border-primary/40 animate-rise"
-                style={{ animationDelay: `${i * 60}ms` }}
-              >
-                {/* identity strip */}
-                <div className="absolute left-0 top-0 h-full w-[3px] bg-gradient-to-b from-primary via-primary-glow to-transparent opacity-60" />
-
-                <div className="mb-4 flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <button
-                        onClick={() => dueToday && toggleHabitPeriod(h.id, currentKey)}
-                        disabled={!dueToday}
-                        aria-pressed={doneNow}
-                        aria-label={
-                          !dueToday
-                            ? "Não programado para hoje"
-                            : doneNow
-                              ? "Desmarcar hábito neste período"
-                              : "Marcar hábito como feito"
-                        }
-                        title={!dueToday ? "Não programado para hoje" : undefined}
-                        className={cn(
-                          "flex h-6 w-6 shrink-0 items-center justify-center rounded-full border transition-colors",
-                          !dueToday
-                            ? "cursor-not-allowed border-border bg-secondary/20 opacity-40"
-                            : doneNow
-                              ? "border-primary bg-gradient-primary"
-                              : "border-border bg-secondary/40 hover:border-primary/40",
-                        )}
-                      >
-                        {doneNow && <Check className="h-3.5 w-3.5 text-primary-foreground" />}
-                      </button>
-                      <h3 className="font-display text-xl leading-tight">{h.name}</h3>
-                      <span className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary/50 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-                        <Repeat className="h-2.5 w-2.5" />
-                        {describeFrequency(h)}
-                      </span>
+          {groupByPeriod ? (
+            <div className="space-y-8">
+              {groups.map((g) => {
+                const Icon = g.key === "none" ? null : DAY_PERIOD_ICON[g.key];
+                return (
+                  <section key={g.key}>
+                    <h2 className="mb-3 flex items-center gap-1.5 text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                      {Icon && <Icon className="h-3 w-3" />}
+                      {g.key === "none" ? "Sem período" : DAY_PERIOD_LABEL[g.key]}
+                      <span className="text-muted-foreground/50">· {g.items.length}</span>
+                    </h2>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      {g.items.map((h, i) => (
+                        <HabitCard key={h.id} habit={h} index={i} onDelete={() => askDelete(h)} />
+                      ))}
                     </div>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {completed}/{periods.length} {FREQUENCY_UNIT[freq]} · {pct}%
-                      {week && ` · ${week.count}/${week.target} esta semana`}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1.5 rounded-full border border-warning/40 bg-warning/10 px-3 py-1">
-                      <Flame className="h-3.5 w-3.5 text-warning" />
-                      <span className="text-mono text-xs text-warning">{streak}</span>
-                    </div>
-                    <HabitDialog
-                      title="Editar hábito"
-                      initial={h}
-                      onSave={(v) => updateHabit(h.id, v)}
-                      trigger={
-                        <button className="opacity-100 transition-opacity hover:text-primary-glow md:opacity-0 md:group-hover:opacity-100">
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                      }
-                    />
-                    <button
-                      onClick={() =>
-                        requestDelete(() => removeHabit(h.id), {
-                          title: "Excluir hábito?",
-                          description: `"${h.name}" e todo o histórico de streak serão perdidos.`,
-                        })
-                      }
-                      className="opacity-100 transition-opacity hover:text-destructive md:opacity-0 md:group-hover:opacity-100"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
+                  </section>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2">
+              {habits.map((h, i) => (
+                <HabitCard key={h.id} habit={h} index={i} onDelete={() => askDelete(h)} />
+              ))}
+            </div>
+          )}
 
-                {/* history grid — visual only */}
-                <div
-                  className="mb-4 grid gap-1"
-                  style={{ gridTemplateColumns: `repeat(${periods.length}, 1fr)` }}
-                  aria-label="Histórico de períodos"
-                >
-                  {periods.map((p, pi) => {
-                    const active = activeMask[pi];
-                    const isCurrent = p === currentKey;
-                    return (
-                      <div
-                        key={p}
-                        title={p}
-                        className={cn(
-                          "h-7 rounded-sm",
-                          active
-                            ? "bg-gradient-to-t from-primary to-primary-glow shadow-soft"
-                            : "bg-secondary/60",
-                          isCurrent && "ring-1 ring-primary-glow ring-offset-1 ring-offset-card",
-                        )}
-                      />
-                    );
-                  })}
-                </div>
-
-                <div className="mt-3 flex items-center justify-between text-[10px] uppercase tracking-[0.2em] text-muted-foreground/80">
-                  <span className="flex items-center gap-1">
-                    <CalendarDays className="h-3 w-3" /> {currentKey}
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <span className="flex items-center gap-1">
-                      <BarChart3 className="h-3 w-3" /> {total}
-                    </span>
-                    <span>streak · {streak} {FREQUENCY_UNIT[freq]}</span>
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+          <div className="mt-8">
+            <HabitsCharts />
+          </div>
+        </>
       )}
 
       {dialog}
