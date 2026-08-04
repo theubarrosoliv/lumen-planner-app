@@ -34,6 +34,8 @@ export function TaskDialog({
   onSave,
   trigger,
   title,
+  open: openProp,
+  onOpenChange,
 }: {
   initial?: Partial<Task>;
   onSave: (t: {
@@ -51,10 +53,21 @@ export function TaskDialog({
     notifyLeadValue?: number;
     notifyLeadUnit?: NotifyLeadUnit;
   }) => void;
-  trigger: React.ReactNode;
+  /** Omit for the normal click-a-trigger-to-open usage. Used without a
+   * trigger by VoiceTaskCapture, which opens this programmatically once a
+   * voice capture has been parsed — there's nothing to click beforehand. */
+  trigger?: React.ReactNode;
   title: string;
+  /** Controlled open state — only needed by callers that open this dialog
+   * from code (see VoiceTaskCapture). Omit both to keep the normal
+   * trigger-click-driven internal state. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = openProp !== undefined;
+  const open = isControlled ? openProp : internalOpen;
+  const setOpen = isControlled ? onOpenChange ?? (() => {}) : setInternalOpen;
   const [text, setText] = useState(initial?.title ?? "");
   const [time, setTime] = useState(initial?.time && initial.time !== "—" ? initial.time : "");
   const [tags, setTags] = useState<string[]>(initial ? itemTags(initial) : []);
@@ -127,7 +140,7 @@ export function TaskDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent className="border-border bg-card">
         <DialogHeader>
           <DialogTitle className="font-display text-2xl">{title}</DialogTitle>
