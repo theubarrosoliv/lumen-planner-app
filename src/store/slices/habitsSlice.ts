@@ -1,5 +1,5 @@
 import { StateCreator } from "zustand";
-import { Habit, HabitFrequency, NotifyLeadUnit } from "../types";
+import { DayPeriod, Habit, HabitFrequency, NotifyLeadUnit } from "../types";
 import { CoreState, mutate, uid } from "../core";
 import { notifyLocal } from "@/lib/localNotify";
 
@@ -18,6 +18,7 @@ export interface HabitsSlice {
     weekdays?: number[],
     intervalDays?: number,
     timesPerWeek?: number,
+    dayPeriod?: DayPeriod,
   ) => void;
   updateHabit: (
     id: string,
@@ -32,6 +33,7 @@ export interface HabitsSlice {
         | "weekdays"
         | "intervalDays"
         | "timesPerWeek"
+        | "dayPeriod"
       >
     >,
   ) => void;
@@ -52,6 +54,7 @@ export const createHabitsSlice = (
       weekdays?: number[],
       intervalDays?: number,
       timesPerWeek?: number,
+      dayPeriod?: DayPeriod,
     ) =>
       set((s) =>
         mutate(s, (d) => ({
@@ -69,6 +72,7 @@ export const createHabitsSlice = (
               weekdays,
               intervalDays,
               timesPerWeek,
+              dayPeriod,
               anchorDate: frequency === "every_n_days" ? localDayKey(new Date()) : undefined,
               completions: {},
             },
