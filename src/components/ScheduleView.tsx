@@ -1,19 +1,26 @@
-import { useEffect, useMemo, useRef } from "react";
+import { Fragment, useEffect, useMemo, useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Task, CalEvent } from "@/store/types";
 import { dateKey, todayKey } from "@/store/useAppStore";
 import { timeToMinutes, layoutTimeline } from "@/lib/timeline";
-import { PRIORITY_BLOCK_STYLE } from "@/lib/priority";
+import { PRIORITY_ACCENT, PRIORITY_BORDER } from "@/lib/priority";
+import { itemTags } from "@/lib/tags";
 import { isoWeekday, WEEKDAY_ABBR } from "@/lib/date";
 import { cn } from "@/lib/utils";
 
-const HOUR_HEIGHT = 56; // px per hour
+const HOUR_HEIGHT = 64; // px per hour
 const DEFAULT_TASK_DURATION = 30; // minutes, when the task has none set
 const DEFAULT_EVENT_DURATION = 60;
-const MIN_BLOCK_HEIGHT = 26; // px — keeps very short/zero-duration blocks tappable
+const MIN_BLOCK_HEIGHT = 30; // px — keeps very short/zero-duration blocks tappable
+/** Below this height a block only has room for one line, so title and time
+ * share it instead of being stacked (and clipped). */
+const COMPACT_BLOCK_HEIGHT = 44;
 const GUTTER_WIDTH = 48; // px — width of the shared hour-label column
 const DAY_COLUMN_MIN_WIDTH = 108; // px floor per day — the week scrolls horizontally below this
+/** Breathing room on each side of a block, so blocks never touch the gold day
+ * dividers (or each other when side by side) and every one reads as its own card. */
+const BLOCK_INSET = 3;
 const MAX_VISIBLE_UNTIMED = 2;
 
 const MONTH_ABBR = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
@@ -57,24 +64,50 @@ function laneTint(index: number, isToday: boolean): string {
   return index % 2 === 1 ? "bg-muted-foreground/[0.04]" : "";
 }
 
+const hasTime = (time?: string) => !!time && time !== "—";
+
+/** Hover/long-press text: everything that doesn't fit inside a small block. */
+function blockTooltip(title: string, time?: string, tags?: string[]): string {
+  return [hasTime(time) ? `${time} · ${title}` : title, tags?.length ? tags.join(", ") : null]
+    .filter(Boolean)
+    .join("\n");
+}
+
+/** Left stripe + outline for a task block. Unprioritized tasks get the app's
+ * gold so a plain task still reads as "mine to do" rather than fading into
+ * the grid; completed ones drop to neutral. */
+function taskAccent(t: Task): { stripe: string; border: string } {
+  if (t.done) return { stripe: "bg-muted-foreground/40", border: "border-border" };
+  if (t.priority) return { stripe: PRIORITY_ACCENT[t.priority], border: PRIORITY_BORDER[t.priority] };
+  return { stripe: "bg-primary", border: "border-primary/40" };
+}
+
 /**
  * A fixed, Google Calendar–style week grid: every day of the week (Mon–Sun)
  * side by side, sharing one hour ruler, so times line up across the whole
  * week instead of showing one day at a time. `date` is just an anchor — any
- * day within the week to display — not a "selected day". Purely a read-only
- * viewer: nothing here can be edited, completed, or deleted — that happens
- * in the actual task/habit/event screens — this is just a picture of the week.
+ * day within the week to display — not a "selected day".
+ *
+ * Nothing can be completed, toggled or deleted from here — this stays a
+ * picture of the week, so a stray tap can never change your data. Tapping a
+ * block instead OPENS that item's own dialog (via `renderTaskTrigger` /
+ * `renderEventTrigger`) to read it in full or edit it deliberately; without
+ * those props the blocks are inert.
  */
 export function ScheduleView({
   date,
   onDateChange,
   tasks,
   events,
+  renderTaskTrigger,
+  renderEventTrigger,
 }: {
   date: string;
   onDateChange: (key: string) => void;
   tasks: Task[];
   events: CalEvent[];
+  renderTaskTrigger?: (task: Task, trigger: React.ReactElement) => React.ReactNode;
+  renderEventTrigger?: (event: CalEvent, trigger: React.ReactElement) => React.ReactNode;
 }) {
   const vScrollRef = useRef<HTMLDivElement>(null);
   const hScrollRef = useRef<HTMLDivElement>(null);
@@ -204,22 +237,49 @@ export function ScheduleView({
                   style={{ minWidth: DAY_COLUMN_MIN_WIDTH }}
                 >
                   {visible.map((item) => {
-                    const isDone = item.kind === "task" && item.task.done;
-                    const title = item.kind === "event" ? item.event.title : item.task.title;
-                    const dotColor =
-                      item.kind === "event" ? item.event.color : isDone ? "bg-success" : "bg-muted-foreground/60";
-                    return (
-                      <span
-                        key={item.kind === "event" ? item.event.id : item.task.id}
-                        title={title}
-                        className={cn(
-                          "flex items-center gap-1 truncate rounded-full border border-border px-1.5 py-0.5 text-[9px]",
-                          isDone ? "text-muted-foreground line-through" : "bg-secondary/50",
-                        )}
+                    const isTask = item.kind === "task";
+                    const source = isTask ? item.task : item.event;
+                    const isDone = isTask && item.task.done;
+                    const stripe = isTask ? taskAccent(item.task).stripe : item.event.color;
+                    const render = isTask ? renderTaskTrigger : renderEventTrigger;
+
+                    const pillClass = cn(
+                      "flex w-full items-center gap-1 truncate rounded-full border px-1.5 py-0.5 text-left text-[9px]",
+                      isDone
+                        ? "border-border text-muted-foreground line-through"
+                        : "border-border bg-card font-medium",
+                      render && "transition-colors hover:border-primary/60",
+                    );
+                    const pillTitle = blockTooltip(source.title, source.time, itemTags(source));
+                    const pillContent = (
+                      <>
+                        <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", stripe)} />
+                        <span className="truncate">{source.title}</span>
+                      </>
+                    );
+                    const pill = render ? (
+                      <button
+                        type="button"
+                        title={pillTitle}
+                        aria-label={`Abrir ${isTask ? "tarefa" : "evento"} "${source.title}"`}
+                        className={pillClass}
                       >
-                        <span className={cn("h-1.5 w-1.5 shrink-0 rounded-full", dotColor)} />
-                        <span className="truncate">{title}</span>
+                        {pillContent}
+                      </button>
+                    ) : (
+                      <span title={pillTitle} className={pillClass}>
+                        {pillContent}
                       </span>
+                    );
+
+                    return (
+                      <Fragment key={source.id}>
+                        {isTask && renderTaskTrigger
+                          ? renderTaskTrigger(item.task, pill)
+                          : !isTask && renderEventTrigger
+                            ? renderEventTrigger(item.event, pill)
+                            : pill}
+                      </Fragment>
                     );
                   })}
                   {hidden > 0 && <span className="px-1 text-[9px] text-muted-foreground">+{hidden} mais</span>}
@@ -279,44 +339,92 @@ export function ScheduleView({
                         const style = {
                           top,
                           height,
-                          left: `${b.col * widthPct}%`,
-                          width: `calc(${widthPct}% - 3px)`,
+                          left: `calc(${b.col * widthPct}% + ${BLOCK_INSET}px)`,
+                          width: `calc(${widthPct}% - ${BLOCK_INSET * 2}px)`,
                         };
+                        const compact = height < COMPACT_BLOCK_HEIGHT;
 
-                        if (b.kind === "task") {
-                          const t = b.task;
-                          return (
-                            <div
-                              key={b.id}
-                              title={t.title}
-                              style={style}
-                              className={cn(
-                                "absolute z-10 overflow-hidden rounded-md border px-1.5 py-1 text-left text-[10px]",
-                                t.done
-                                  ? "border-border bg-secondary/40 text-muted-foreground line-through opacity-70"
-                                  : t.priority
-                                    ? PRIORITY_BLOCK_STYLE[t.priority]
-                                    : "border-border bg-secondary/60",
+                        const isTask = b.kind === "task";
+                        const source = isTask ? b.task : b.event;
+                        const isDone = isTask && b.task.done;
+                        const { stripe, border } = isTask
+                          ? taskAccent(b.task)
+                          : { stripe: b.event.color, border: "border-border" };
+
+                        // Opaque `bg-card` on purpose: the old translucent fill
+                        // let the day-lane tint bleed through, which made two
+                        // adjacent blocks read as one shaded area.
+                        const blockClass = cn(
+                          "absolute z-10 flex overflow-hidden rounded-md border bg-card text-left shadow-soft",
+                          border,
+                          isDone && "opacity-60",
+                          (isTask ? renderTaskTrigger : renderEventTrigger) &&
+                            "transition-shadow hover:shadow-glow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                        );
+                        const tooltip = blockTooltip(source.title, source.time, itemTags(source));
+
+                        const content = (
+                          <>
+                            <span className={cn("w-[3px] shrink-0", stripe)} aria-hidden="true" />
+                            <span className="min-w-0 flex-1 px-1.5 py-1">
+                              {compact ? (
+                                <span
+                                  className={cn(
+                                    "block truncate text-[10px] font-medium leading-tight",
+                                    isDone && "text-muted-foreground line-through",
+                                  )}
+                                >
+                                  {hasTime(source.time) && (
+                                    <span className="text-mono mr-1 text-muted-foreground">{source.time}</span>
+                                  )}
+                                  {source.title}
+                                </span>
+                              ) : (
+                                <>
+                                  <span
+                                    className={cn(
+                                      "block truncate text-[11px] font-semibold leading-tight",
+                                      isDone && "text-muted-foreground line-through",
+                                    )}
+                                  >
+                                    {source.title}
+                                  </span>
+                                  {hasTime(source.time) && (
+                                    <span className="text-mono block truncate text-[10px] text-muted-foreground">
+                                      {source.time}
+                                    </span>
+                                  )}
+                                </>
                               )}
-                            >
-                              <span className="block truncate font-medium">{t.title}</span>
-                              <span className="block truncate opacity-80">{t.time}</span>
-                            </div>
-                          );
-                        }
+                            </span>
+                          </>
+                        );
 
-                        const e = b.event;
-                        return (
-                          <div
-                            key={b.id}
+                        const render = isTask ? renderTaskTrigger : renderEventTrigger;
+                        const block = render ? (
+                          <button
+                            type="button"
                             style={style}
-                            title={e.title}
-                            className="absolute z-10 overflow-hidden rounded-md border border-border/70 bg-secondary/60 px-1.5 py-1 text-left text-[10px]"
+                            title={tooltip}
+                            aria-label={`Abrir ${isTask ? "tarefa" : "evento"} "${source.title}"`}
+                            className={blockClass}
                           >
-                            <span className={cn("mb-0.5 block h-1 w-4 rounded-full", e.color)} />
-                            <span className="block truncate font-medium">{e.title}</span>
-                            {e.time && <span className="block truncate opacity-80">{e.time}</span>}
+                            {content}
+                          </button>
+                        ) : (
+                          <div style={style} title={tooltip} className={blockClass}>
+                            {content}
                           </div>
+                        );
+
+                        return (
+                          <Fragment key={b.id}>
+                            {b.kind === "task" && renderTaskTrigger
+                              ? renderTaskTrigger(b.task, block)
+                              : b.kind === "event" && renderEventTrigger
+                                ? renderEventTrigger(b.event, block)
+                                : block}
+                          </Fragment>
                         );
                       })}
                     </div>

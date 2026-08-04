@@ -2,8 +2,6 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { SectionHeader } from "@/components/SectionHeader";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   CheckCircle2,
   Circle,
@@ -17,23 +15,10 @@ import {
   Target,
   ArrowUpRight,
 } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { TagMultiSelect } from "@/components/TagMultiSelect";
-import { NotifyField } from "@/components/NotifyField";
-import { WeekdaySelector } from "@/components/WeekdaySelector";
-import { useCustomOptions } from "@/hooks/use-custom-options";
+import { TaskDialog } from "@/components/TaskDialog";
 import { useConfirmDelete } from "@/hooks/use-confirm-delete";
 import { useAppStore, useUserData, todayKey } from "@/store/useAppStore";
-import { Task, NotifyLeadUnit, TaskPriority, TaskRecurrence } from "@/store/types";
-import { itemTags } from "@/lib/tags";
 import { PRIORITY_STYLE } from "@/lib/priority";
 import { describeRecurrence } from "@/lib/date";
 import { materializeRecurringTask, splitWeekdayTask } from "@/lib/tasks";
@@ -45,7 +30,6 @@ import {
   sortAgendaItems,
 } from "@/lib/agenda";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
 
 const tagColor: Record<string, string> = {
   Hábito: "border-warning/40 text-warning",
@@ -55,230 +39,6 @@ const tagColor: Record<string, string> = {
   Trabalho: "border-primary/40 text-primary-glow",
   Pessoal: "border-border text-muted-foreground",
 };
-
-const TAGS = ["Foco", "Trabalho", "Reunião", "Hábito", "Saúde", "Pessoal"];
-
-function TaskDialog({
-  initial,
-  onSave,
-  trigger,
-  title,
-}: {
-  initial?: Partial<Task>;
-  onSave: (t: {
-    time: string;
-    title: string;
-    tags: string[];
-    date: string;
-    notes?: string;
-    priority?: TaskPriority;
-    recurrence?: TaskRecurrence;
-    weekdays?: number[];
-    intervalDays?: number;
-    duration?: number;
-    notify?: boolean;
-    notifyLeadValue?: number;
-    notifyLeadUnit?: NotifyLeadUnit;
-  }) => void;
-  trigger: React.ReactNode;
-  title: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const [text, setText] = useState(initial?.title ?? "");
-  const [time, setTime] = useState(initial?.time && initial.time !== "—" ? initial.time : "");
-  const [tags, setTags] = useState<string[]>(initial ? itemTags(initial) : []);
-  const [date, setDate] = useState(initial?.date ?? todayKey());
-  const [priority, setPriority] = useState<TaskPriority | "none">(initial?.priority ?? "none");
-  const [recurrence, setRecurrence] = useState<TaskRecurrence | "none">(initial?.recurrence ?? "none");
-  const [weekdays, setWeekdays] = useState<number[]>(initial?.weekdays ?? []);
-  const [intervalDays, setIntervalDays] = useState<number | undefined>(initial?.intervalDays ?? 15);
-  const [duration, setDuration] = useState<number | undefined>(initial?.duration);
-  const [notify, setNotify] = useState(initial?.notify !== false);
-  const [notifyLeadValue, setNotifyLeadValue] = useState<number | undefined>(initial?.notifyLeadValue);
-  const [notifyLeadUnit, setNotifyLeadUnit] = useState<NotifyLeadUnit>(initial?.notifyLeadUnit ?? "minutes");
-  const {
-    options: tagOptions,
-    custom: customTags,
-    addOption: addTagOption,
-    removeOption: removeTagOption,
-    renameOption: renameTagOption,
-  } = useCustomOptions("lumen-custom-tags", TAGS);
-
-  const submit = () => {
-    if (!text.trim()) {
-      toast.error("Dê um título à tarefa.");
-      return;
-    }
-    if (recurrence === "weekdays" && weekdays.length === 0) {
-      toast.error("Selecione ao menos um dia da semana.");
-      return;
-    }
-    if (recurrence === "every_n_days" && (!intervalDays || intervalDays < 2)) {
-      toast.error("Informe a cada quantos dias (mínimo 2).");
-      return;
-    }
-    onSave({
-      title: text.trim(),
-      time: time || "—",
-      tags,
-      date,
-      priority: priority === "none" ? undefined : priority,
-      recurrence: recurrence === "none" ? undefined : recurrence,
-      weekdays: recurrence === "weekdays" ? weekdays : undefined,
-      intervalDays: recurrence === "every_n_days" ? intervalDays : undefined,
-      duration,
-      notify,
-      notifyLeadValue,
-      notifyLeadUnit,
-    });
-    setOpen(false);
-    if (!initial) {
-      setText("");
-      setTime("");
-      setTags([]);
-      setPriority("none");
-      setRecurrence("none");
-      setWeekdays([]);
-      setIntervalDays(15);
-      setDuration(undefined);
-    }
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="border-border bg-card">
-        <DialogHeader>
-          <DialogTitle className="font-display text-2xl">{title}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 py-2">
-          <div className="space-y-1.5">
-            <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Título</Label>
-            <Input value={text} onChange={(e) => setText(e.target.value)} autoFocus />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Data</Label>
-              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Hora</Label>
-              <Input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                Duração (min)
-              </Label>
-              <Input
-                type="number"
-                inputMode="numeric"
-                pattern="[0-9]*"
-                min={0}
-                step={5}
-                placeholder="60"
-                value={duration ?? ""}
-                onChange={(e) => setDuration(e.target.value === "" ? undefined : Number(e.target.value))}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-                Prioridade
-              </Label>
-              <Select
-                value={priority}
-                onValueChange={(v) => setPriority(v as TaskPriority | "none")}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sem prioridade</SelectItem>
-                  <SelectItem value="high">Alta</SelectItem>
-                  <SelectItem value="medium">Média</SelectItem>
-                  <SelectItem value="low">Baixa</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
-              Repetir
-            </Label>
-            <Select
-              value={recurrence}
-              onValueChange={(v) => setRecurrence(v as TaskRecurrence | "none")}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Não repetir</SelectItem>
-                <SelectItem value="daily">Diariamente</SelectItem>
-                <SelectItem value="weekly">Semanalmente</SelectItem>
-                <SelectItem value="monthly">Mensalmente</SelectItem>
-                <SelectItem value="weekdays">Dias da semana…</SelectItem>
-                <SelectItem value="every_n_days">A cada X dias…</SelectItem>
-              </SelectContent>
-            </Select>
-            {recurrence === "weekdays" && (
-              <div className="pt-1">
-                <WeekdaySelector value={weekdays} onChange={setWeekdays} />
-                <p className="mt-1.5 text-[11px] text-muted-foreground">
-                  A tarefa se repete nos dias marcados — escolha mais de um para "N vezes por semana".
-                </p>
-              </div>
-            )}
-            {recurrence === "every_n_days" && (
-              <div className="flex items-center gap-2 pt-1">
-                <span className="text-sm text-muted-foreground">A cada</span>
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  min={2}
-                  step={1}
-                  className="h-8 w-20"
-                  value={intervalDays ?? ""}
-                  onChange={(e) => setIntervalDays(e.target.value === "" ? undefined : Number(e.target.value))}
-                />
-                <span className="text-sm text-muted-foreground">dias</span>
-              </div>
-            )}
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Tags</Label>
-            <TagMultiSelect
-              value={tags}
-              onChange={setTags}
-              options={tagOptions}
-              onCreate={addTagOption}
-              customOptions={customTags}
-              onRemove={removeTagOption}
-              onRename={renameTagOption}
-            />
-          </div>
-          <NotifyField
-            notify={notify}
-            onNotifyChange={setNotify}
-            leadValue={notifyLeadValue}
-            leadUnit={notifyLeadUnit}
-            onLeadValueChange={setNotifyLeadValue}
-            onLeadUnitChange={setNotifyLeadUnit}
-          />
-        </div>
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => setOpen(false)}>
-            Cancelar
-          </Button>
-          <Button onClick={submit} className="bg-gradient-primary shadow-elegant">
-            Salvar
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 const KIND_LABEL: Record<AgendaItemKind, string> = {
   task: "Tarefa",
