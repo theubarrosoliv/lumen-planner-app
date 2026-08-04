@@ -177,7 +177,6 @@ export default function Auth() {
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="voce@exemplo.com"
                       autoComplete="email"
                       autoFocus
                       required
@@ -211,7 +210,6 @@ export default function Auth() {
                       id="name"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      placeholder="Como podemos te chamar?"
                       autoComplete="name"
                       required
                     />
@@ -226,7 +224,6 @@ export default function Auth() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="voce@exemplo.com"
                     autoComplete="email"
                     required
                   />
