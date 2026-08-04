@@ -31,6 +31,15 @@ export const PRIORITY_BORDER: Record<TaskPriority, string> = {
   low: "border-success/60",
 };
 
+/** Wash over a block's face, mirroring TagStyle["tint"] — used when a task
+ * has a priority but no tag, so it's colored just as legibly as a tagged one
+ * instead of relying on a few pixels of stripe. */
+export const PRIORITY_TINT: Record<TaskPriority, string> = {
+  high: "bg-destructive/20",
+  medium: "bg-warning/20",
+  low: "bg-success/20",
+};
+
 export const PRIORITY_LABEL: Record<TaskPriority, string> = {
   high: "Alta",
   medium: "Média",
