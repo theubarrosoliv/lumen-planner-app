@@ -106,12 +106,7 @@ function HabitDialog({
         <div className="space-y-4 py-2">
           <div className="space-y-1.5">
             <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Nome</Label>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Ex.: Meditar 10 min"
-              autoFocus
-            />
+            <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus />
           </div>
           <div className="space-y-1.5">
             <Label className="text-xs uppercase tracking-[0.2em] text-muted-foreground">

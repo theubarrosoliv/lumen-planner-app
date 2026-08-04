@@ -71,7 +71,6 @@ export default function Profile() {
                 id="profile-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Como podemos te chamar?"
               />
             </div>
             <div className="space-y-1.5">
