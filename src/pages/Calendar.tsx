@@ -24,12 +24,14 @@ import {
 } from "@/components/ui/dialog";
 import { NotifyField } from "@/components/NotifyField";
 import { TagMultiSelect } from "@/components/TagMultiSelect";
+import { TaskDialog } from "@/components/TaskDialog";
 import { useConfirmDelete } from "@/hooks/use-confirm-delete";
 import { useCustomOptions } from "@/hooks/use-custom-options";
 import { useAppStore, useUserData, dateKey, todayKey } from "@/store/useAppStore";
 import { CalEvent, NotifyLeadUnit, Task } from "@/store/types";
 import { itemTags } from "@/lib/tags";
 import { timeToMinutes } from "@/lib/timeline";
+import { splitWeekdayTask } from "@/lib/tasks";
 import { PRIORITY_BLOCK_STYLE } from "@/lib/priority";
 import { formatLongDate } from "@/lib/date";
 import { cn } from "@/lib/utils";
@@ -217,6 +219,8 @@ export default function CalendarPage() {
   const updateEvent = useAppStore((s) => s.updateEvent);
   const removeEvent = useAppStore((s) => s.removeEvent);
   const toggleTask = useAppStore((s) => s.toggleTask);
+  const addTask = useAppStore((s) => s.addTask);
+  const updateTask = useAppStore((s) => s.updateTask);
   const { requestDelete, dialog } = useConfirmDelete();
 
   const [selected, setSelected] = useState<string>(todayKey());
@@ -367,7 +371,36 @@ export default function CalendarPage() {
       </div>
 
       {view === "cronograma" ? (
-        <ScheduleView date={scheduleDate} onDateChange={setScheduleDate} tasks={tasks} events={events} />
+        <ScheduleView
+          date={scheduleDate}
+          onDateChange={setScheduleDate}
+          tasks={tasks}
+          events={events}
+          // Tapping a block opens that item's own dialog right here, so the
+          // Cronograma stays a read-only picture (nothing is completed or
+          // deleted by tapping) while still letting the item be read in full
+          // and edited on purpose — no bounce to another screen.
+          renderTaskTrigger={(task, trigger) => (
+            <TaskDialog
+              title="Editar tarefa"
+              initial={task}
+              onSave={(patch) => {
+                const [first, ...rest] = splitWeekdayTask(patch);
+                updateTask(task.id, first);
+                rest.forEach(addTask);
+              }}
+              trigger={trigger}
+            />
+          )}
+          renderEventTrigger={(event, trigger) => (
+            <EventDialog
+              title="Editar evento"
+              initial={event}
+              onSave={(v) => updateEvent(event.id, v)}
+              trigger={trigger}
+            />
+          )}
+        />
       ) : (
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="rounded-2xl border border-border bg-gradient-card p-4 md:p-6">
