@@ -84,10 +84,10 @@ function blockTooltip(title: string, time?: string, tags?: string[]): string {
  * the other; a task with a priority and no tag is colored by the priority
  * instead.
  *
- * An untagged, unprioritized task is deliberately NEUTRAL rather than gold:
- * gold is the app's accent and also the first tag hue, so painting every
- * plain task with it made the whole grid read as one gold mass and buried
- * the tagged ones. Grey lets the colored blocks be the thing that stands out.
+ * An untagged, unprioritized task keeps the app's gold, so a plain task still
+ * looks like it belongs to Lumen instead of going grey. It gets the stripe
+ * and outline but NOT the full-face wash — that's what keeps tagged tasks
+ * standing out against the untagged ones, which are the majority.
  */
 function taskAccent(t: Task): { stripe: string; border: string; tint: string } {
   if (t.done) return { stripe: "bg-muted-foreground/40", border: "border-border", tint: "" };
@@ -100,8 +100,8 @@ function taskAccent(t: Task): { stripe: string; border: string; tint: string } {
       }
     : null;
   return {
-    stripe: tag?.accent ?? priority?.stripe ?? "bg-muted-foreground/60",
-    border: priority?.border ?? tag?.border ?? "border-border",
+    stripe: tag?.accent ?? priority?.stripe ?? "bg-primary",
+    border: priority?.border ?? tag?.border ?? "border-primary/40",
     tint: tag?.tint ?? priority?.tint ?? "",
   };
 }
