@@ -55,7 +55,12 @@ export interface Task extends NotifyOverride {
    * tasks created before this existed, and for "daily"/"weekly"/"monthly",
    * which still only ever have one live occurrence at a time. */
   seriesId?: string;
-  /** Minutes; used to size this task's block in the Cronograma timeline. Absent = default block height. */
+  /** How long the task lasts, in minutes — sizes its block in the Cronograma
+   * and yields the "termina às" shown there. Absent = open-ended (the block
+   * falls back to a default height and only the start time is displayed).
+   * Stored as a length rather than an end time so moving the start keeps the
+   * task the same size; the form enters and displays it as an end time
+   * (see endTimeOf/durationBetween in src/lib/timeline.ts). */
   duration?: number;
   done: boolean;
   /** ISO timestamp set when `done` flips to true; cleared when unmarked.
@@ -148,7 +153,8 @@ export interface CalEvent extends NotifyOverride {
   title: string;
   color: string; // bg-* class
   tags?: string[];
-  /** Minutes; used to size this event's block in the Cronograma timeline. Absent = default block height. */
+  /** How long the event lasts, in minutes — see the matching field on Task
+   * for why it's stored as a length while the form works in end times. */
   duration?: number;
 }
 
