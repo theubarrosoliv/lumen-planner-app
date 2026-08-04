@@ -13,7 +13,15 @@
 // Required secret (supabase secrets set ...):
 //   GEMINI_API_KEY  - from https://aistudio.google.com/apikey (free tier)
 // Optional secret:
-//   GEMINI_MODEL    - defaults to "gemini-2.0-flash" if unset
+//   GEMINI_MODEL    - defaults to "gemini-flash-latest" if unset. Verified
+//     directly against this account's key 2026-08-04: "gemini-2.0-flash" (an
+//     earlier, seemingly reasonable default) has a hard 0 free-tier quota on
+//     this project — not "used up", configured at zero — while
+//     "gemini-flash-latest" (currently resolving to "gemini-3.6-flash")
+//     works. If this default ever starts failing with RESOURCE_EXHAUSTED /
+//     quota "limit: 0", the fix is trying other model names against
+//     https://generativelanguage.googleapis.com/v1beta/models?key=... rather
+//     than assuming the key itself is broken.
 //
 // Unlike send-notifications, this is called directly by the logged-in
 // client (supabase.functions.invoke, which attaches the user's session JWT
@@ -122,7 +130,7 @@ Deno.serve(async (req) => {
 
   const apiKey = Deno.env.get("GEMINI_API_KEY");
   if (!apiKey) return jsonResponse({ error: "Secret ausente: GEMINI_API_KEY" }, 500);
-  const model = Deno.env.get("GEMINI_MODEL") || "gemini-2.0-flash";
+  const model = Deno.env.get("GEMINI_MODEL") || "gemini-flash-latest";
 
   let body: { transcript?: unknown; today?: unknown; knownTags?: unknown };
   try {
