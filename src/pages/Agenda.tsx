@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TaskDialog } from "@/components/TaskDialog";
+import { VoiceTaskCapture } from "@/components/VoiceTaskCapture";
 import { useConfirmDelete } from "@/hooks/use-confirm-delete";
 import { useAppStore, useUserData, todayKey } from "@/store/useAppStore";
 import { PRIORITY_STYLE } from "@/lib/priority";
@@ -92,15 +93,18 @@ export default function Agenda() {
         title="Tudo que importa hoje."
         description="Capture compromissos, organize por blocos e acompanhe seu progresso."
         action={
-          <TaskDialog
-            title="Nova tarefa"
-            onSave={(t) => materializeRecurringTask(t).forEach(addTask)}
-            trigger={
-              <Button className="bg-gradient-primary shadow-elegant">
-                <Plus className="mr-1 h-4 w-4" /> Nova tarefa
-              </Button>
-            }
-          />
+          <div className="flex items-center gap-2">
+            <VoiceTaskCapture />
+            <TaskDialog
+              title="Nova tarefa"
+              onSave={(t) => materializeRecurringTask(t).forEach(addTask)}
+              trigger={
+                <Button className="bg-gradient-primary shadow-elegant">
+                  <Plus className="mr-1 h-4 w-4" /> Nova tarefa
+                </Button>
+              }
+            />
+          </div>
         }
       />
 
